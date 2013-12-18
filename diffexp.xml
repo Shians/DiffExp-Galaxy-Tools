@@ -1,0 +1,54 @@
+<tool id="diffexp" name="DiffExp">
+    <description>
+        Perform differential expression analysis using the edgeR and limma
+        packages
+    </description>
+    
+    <command interpreter="RScript">
+        ScriptBSV.R $counts $geneanno $pdfout $top $topNW $plotOptions
+                    $genotypes
+    </command>
+    
+    <inputs>
+        <param name="counts" type="data" format="txt" label="Counts Data"/>
+        
+        <param name="geneanno" type="data" format="txt"
+               label="Gene Annotations"/>
+               
+        <param name="genotypes" type="text" size="80" label="Genotypes"
+               help="Inputs genotypes seperated with comma: WT,WT,Mut..."/>
+               
+        <param name="plotOptions" type="select" label="Select Plots"
+         display="checkboxes" multiple="true">
+            <option value="bcv">BCV</option>
+            <option value="voom">voom</option>
+            <option value="mds">MDS</option>
+            <option value="ma">MA</option>
+        </param>
+        
+        <conditional name="wantTop">
+            <param name="tableOPT" type="select" label="Output Top Tables"
+                    display="radio">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+            </param>
+        </conditional>
+    </inputs>
+    
+    <outputs>
+        <data name="pdfout" format="pdf" label="Plots"/>
+        
+        <data name="top" format="csv" label="Top Expressions">
+            <filter>wantTop['tableOPT']=="yes"</filter>
+        </data>
+        
+        <data name="topNW" format="csv"
+              label="Top Expressions no weights">
+              <filter>wantTop['tableOPT']=="yes"</filter>
+        </data>
+    </outputs>
+    
+    <help>
+        Help is on its way!
+    </help>
+</tool>
