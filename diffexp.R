@@ -13,31 +13,49 @@ outDir <- as.character(argv[3])
 topOut <- as.character(argv[4])
 topNoWeightOut <- as.character(argv[5])
 options <- unlist(strsplit(as.character(argv[6]), ","))
-genotypeData <- unlist(strsplit(as.character(argv[7]), ","))
+normOpt <- as.character(argv[7])
+weightOpt <- as.character(argv[8])
 
 # Process options
 if (any(options=="bcv")){
     bcvOPT=T;
+    cat("BCV Plot Requested\n")
 } else {
     bcvOPT=F;
+    cat("BCV Plot Omitted\n")
+
 }
 
 if (any(options=="voom")){
     voomOPT=T;
+    cat("voom Plot Requested\n")
 } else {
     voomOPT=F;
+    cat("voom Plot Omitted\n")
 }
 
 if (any(options=="mds")){
     mdsOPT=T;
+    cat("MDS Plot Requested\n")
 } else {
     mdsOPT=F;
+    cat("MDS Plot Omitted\n")
 }
 
 if (any(options=="ma")){
     maOPT=T;
+    cat("MA Plot Requested\n")
 } else {
     maOPT=F;
+    cat("MA Plot Omitted\n")
+}
+
+if (weightOpt=="yes"){
+    wantWeight=T;
+    cat("Weights used\n")
+} else {
+    wantWeight=F;
+    cat("Weights not used\n")
 }
 
 ###########################################################
@@ -45,12 +63,12 @@ if (any(options=="ma")){
 ###########################################################
 
 # Load in data
-counts <- read.table(countPath, sep="\t")
-geneanno <- read.table(annoPath, sep="\t")
+load(countPath)
+load(annoPath)
 
 # Extract counts and annotation data
 data <- list()
-data$counts <- counts
+data$counts <- counts$counts
 data$genes <- geneanno
 
 # Select only the genes that have more than 0.5 cpm in at least 3 samples
@@ -77,7 +95,7 @@ row.names(data$samples) <- colnames(data$counts)
 data <- new("DGEList", data)
 
 # Calculating normalising factor, estimating dispersion and plotting BCV
-data <- calcNormFactors(data, method="TMM")
+data <- calcNormFactors(data, method=normOpt)
 data <- estimateDisp(data, robust=T)
 pdf(outDir)
 
