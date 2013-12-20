@@ -1,6 +1,7 @@
 # Collects arguments from command line
 argv <- commandArgs(TRUE)
 
+# Load all required libraries
 library(edgeR, quietly=T, warn.conflicts=F)
 library(limma, quietly=T, warn.conflicts=F)
 library(statmod, quietly=T, warn.conflicts=F)
@@ -15,8 +16,11 @@ topNoWeightOut <- as.character(argv[5])
 options <- unlist(strsplit(as.character(argv[6]), ","))
 normOpt <- as.character(argv[7])
 weightOpt <- as.character(argv[8])
+cpmReq <- as.numeric(argv[9])
+sampleReq <- as.numeric(argv[10])
+factor <- as.character(argv[11])
 
-# Process options
+# Process arguments
 if (any(options=="bcv")){
     bcvOPT=T;
     cat("BCV Plot Requested\n")
@@ -32,14 +36,6 @@ if (any(options=="voom")){
 } else {
     voomOPT=F;
     cat("voom Plot Omitted\n")
-}
-
-if (any(options=="mds")){
-    mdsOPT=T;
-    cat("MDS Plot Requested\n")
-} else {
-    mdsOPT=F;
-    cat("MDS Plot Omitted\n")
 }
 
 if (any(options=="ma")){
@@ -58,6 +54,9 @@ if (weightOpt=="yes"){
     cat("Weights not used\n")
 }
 
+factor <- unlist(strsplit(as.character(argv[11]),"::"))
+factorLevelData <- unlist(strsplit(factor[3],","))
+
 ###########################################################
 ### BCV (Biological Coefficient of Variation) Analysis
 ###########################################################
@@ -72,16 +71,16 @@ data$counts <- counts$counts
 data$genes <- geneanno
 
 # Select only the genes that have more than 0.5 cpm in at least 3 samples
-sel <- rowSums(cpm(data$counts) > 0.5) >= 3
+sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data$counts <- data$counts[sel, ]
 data$genes <- data$genes[sel, ]
 
 # Creating naming data
 samplenames <- colnames(data$counts)
-genotype <- c("WT", "WT", "Homozygous", "Homozygous", "Homozygous", "WT") 
-genotype <- as.factor(genotype)
-sampleanno <- data.frame("sampleID"=samplenames, "genotype"=genotype,
-                         "group"=genotype)
+factorLevels <- factorLevelData
+factorLevels <- as.factor(factorLevels)
+sampleanno <- data.frame("sampleID"=samplenames, "factorLevels"=factorLevels,
+                         "group"=factorLevels)
 
 # Attaching the naming data, library size and norming factor
 data$samples <- sampleanno
@@ -108,24 +107,11 @@ if (bcvOPT){
 ###########################################################
 
 # Generating design information
-design <- model.matrix(~genotype)
+design <- model.matrix(~factorLevels)
 colnames(design)[2] <- "WT"
 
 # Generate voom data and Mean-variance plot
 vData <- voom(data, design = design, plot=voomOPT)
-
-# Chcking for Smch1d1 expression
-ind <- match("Smchd1", vData$genes$Symbols)
-
-###########################################################
-### plotMDS (Multidimensional Scaling Plot)
-###########################################################
-labels <- c("WT-MD1.13", "WT-MD1.14", "Homozygoys-MD1.1", "Homozygous-MD1.2",
-            "Homozygous-MD1.3", "WT-MD1.4")
-if (mdsOPT){
-    plotMDS(vData, labels=labels, col=as.numeric(genotype), cex=0.5, 
-            xlim=c(-3.5, 5))
-}
 
 ###########################################################
 ### Toptabs
@@ -147,20 +133,11 @@ top <- data.frame(c(top[10], top[1:9]))
 # Generate a topTable for all gene entries and select for those with p-values
 # lower than 0.05
 top <- topTable(voomFit, coef=2, number=Inf, sort.by="P")
-row.names(top) <- NULL
-sel <- top$adj.P.Val<0.05
-top <- top[sel, ]
-summaryData <- summary(decideTests(voomFit))
-rnames <- c("Decreased Expression", "No Change", "Increased Expression")
-row.names(summaryData) <- rnames
 
 # Analysis without sample weights
 voomFitNoWeights <- lmFit(vData, design)
 voomFitNoWeights <- eBayes(voomFitNoWeights)
 topNoWeights <- topTable(voomFitNoWeights, coef=2, number=Inf, sort.by="P")
-selNoWeights <- topNoWeights$adj.P.Val<0.05
-topNoWeights <- top[selNoWeights, ]
-summaryDataNoWeights <- summary(decideTests(voomFitNoWeights))
 
 # Write out tables for results with and without weights
 write.csv(top, file=topOut, row.names = F)
@@ -180,12 +157,5 @@ if (maOPT){
                   main="WT - Smchd1", xlab="Average Expression",
                   ylab="logFC: WT - Smchd1")
     abline(h=0, col="grey", lty=2)
-
-    # Make a really weird plot that is worse than the previous two
-    sel <- top$adj.P.Val<0.05
-    plot(top$AveExpr, top$logFC, xlab="Average Expression", 
-         ylab="logFC: WT - Smchd1", pch=20, cex=0.5)
-    points(top$AveExpr[sel], top$logFC[sel], pch=18, col=2)
-    abline(h=0,col="grey", lty=2)
 }
 invisible(dev.off()) 

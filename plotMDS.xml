@@ -1,0 +1,49 @@
+<tool id="plotmds" name="Plot MDS" version="1.0.0">
+    <description>
+        Create a multidimensional scaling plot to identify outliers in samples
+    </description>
+    
+    <command interpreter="RScript">
+        plotMDS.R $countPath $annoPath $outDir $factData $labelData 
+                  #if $filterCPM.filterLowCPM=="yes":
+                    $filterCPM['cpmReq'] $filterCPM['sampleReq']
+                  #else
+                    0 0
+                  #end if
+    </command>
+    
+    <inputs>
+        <param name="countPath" type="data" format="rda" label="Counts Data"/>
+        <param name="annoPath" type="data" format="rda"
+               label="Gene Annotations"/>
+        <param name="factData" type="text" size="100"
+               label="Factor Levels"/>
+        <param name="labelData" type="text" size="100"
+               label="Sample Labels"/>
+        
+        <conditional name="filterCPM">
+            <param name="filterLowCPM" type="select" label="Filter Low CPM">
+                   <option value="yes" selected="True">Yes</option>
+                   <option value="no">No</option>
+            </param>
+            <when value="yes">
+            <param name="cpmReq" type="float" value="0.5" min="0" max="1"
+                   label="Minimum CPM"/>
+            <param name="sampleReq" type="integer" value="3" min="0"
+                   label="Minimum Samples" 
+                   help="Filter out all the genes that do not meet the minimum 
+                        CPM in at least this many samples"/>
+            </when>
+            <when value="no"/>
+        </conditional>
+    </inputs>
+    
+    <outputs>
+        <data name="outDir" format="pdf" label="MDS Plot"/>
+    </outputs>
+    
+    <help>
+        
+    </help>
+</tool>
+
