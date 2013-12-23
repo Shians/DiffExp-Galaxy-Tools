@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="0.0.4">
+<tool id="diffexp" name="DiffExp" version="0.0.5">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -10,18 +10,20 @@
   </requirements>
 
   <command interpreter="RScript">
-      diffexp.R $counts $geneanno $pdfout $top $topNW $plotOptions <!--6-->
+      diffexp.R $counts $geneanno $pdfout $top $topNW $rdaOut      <!--6-->
                 $normalisationOption $wantWeight.weightOption      <!--8-->
+                $contrast
                 
                 #if $filterCPM.filterLowCPM=="yes":
-                  $filterCPM['cpmReq'] $filterCPM['sampleReq']
+                    $filterCPM['cpmReq'] $filterCPM['sampleReq']
                 #else
-                  0 0
+                    0 0
                 #end if                                            <!--10-->
                 
                 #for $i, $fct in enumerate($factors):
-                  factor::$fct.factName::$fct.factLevel
+                    factor::$fct.factName::$fct.factLevel
                 #end for
+                
   </command>
    
   <inputs>
@@ -37,6 +39,10 @@
                  label="Factor Levels (No spaces)"
                  help="Eg. WT,WT,Mut,Mut,WT"/>
       </repeat>
+      
+      <param name="contrast" type="text" size="30"
+             label="Contrast of interest (No spaces)"
+             help="Eg. (WT-Mut)/2"/>
       
       <conditional name="filterCPM">
           <param name="filterLowCPM" type="select" label="Filter Low CPM">
@@ -56,39 +62,44 @@
       
       <param name="normalisationOption" type="select" 
              label="Normalisation Method">
-        <option value="TMM">TMM</option>
-        <option value="RLE">RLE</option>
-        <option value="upperquartile">Upperquartile</option>
-        <option value="none">None (Don't normalise)</option>
+          <option value="TMM">TMM</option>
+          <option value="RLE">RLE</option>
+          <option value="upperquartile">Upperquartile</option>
+          <option value="none">None (Don't normalise)</option>
       </param>
       
       <conditional name="wantWeight">
-        <param name="weightOption" type="select" label="Apply weights"
-               display="radio" help="Apply weights if outliers are present">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </param>
+          <param name="weightOption" type="select" label="Apply weights"
+                 display="radio" help="Apply weights if outliers are present">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </param>
       </conditional>
       
-      <param name="plotOptions" type="select" label="Select Plots"
-             display="checkboxes" multiple="true">
-        <option value="bcv" selected="True">BCV</option>
-        <option value="voom" selected="True">voom</option>
-        <option value="ma" selected="True">MA</option>
-      </param>
+      <conditional name="wantRda">
+          <param name="rdaOption" type="select" label="Output RData"
+                help="Output all the data R used to construct the plots, can 
+                      be used to apply custom titles and labels">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </param>
+      </conditional>
   </inputs>
   
   <outputs>
-    <data name="pdfout" format="pdf" label="Plots"/>
+      <data name="pdfout" format="pdf" label="Plots"/>
       
-    <data name="top" format="csv" label="Top Expressions">
-        <filter>wantWeight['weightOption']=="yes"</filter>
-    </data>
+      <data name="top" format="csv" label="Top Expressions">
+          <filter>wantWeight['weightOption']=="yes"</filter>
+      </data>
         
-    <data name="topNW" format="csv"
-          label="Top Expressions (no weights)">
+      <data name="topNW" format="csv" label="Top Expressions (no weights)">
           <filter>wantWeight['weightOption']=="no"</filter>
-    </data>
+      </data>
+    
+      <data name="rdaOut" format="rda" label="RData">
+          <filter>wantRda['rdaOption']=="yes"</filter>
+      </data>
   </outputs>
   
   <help>

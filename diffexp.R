@@ -2,10 +2,10 @@
 argv <- commandArgs(TRUE)
 
 # Load all required libraries
-library(edgeR, quietly=T, warn.conflicts=F)
-library(limma, quietly=T, warn.conflicts=F)
-library(statmod, quietly=T, warn.conflicts=F)
-library(splines, quietly=T, warn.conflicts=F)
+library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
+library(limma, quietly=TRUE, warn.conflicts=FALSE)
+library(statmod, quietly=TRUE, warn.conflicts=FALSE)
+library(splines, quietly=TRUE, warn.conflicts=FALSE)
 
 # Grab arguments
 countPath <- as.character(argv[1])
@@ -13,49 +13,23 @@ annoPath <- as.character(argv[2])
 outDir <- as.character(argv[3])
 topOut <- as.character(argv[4])
 topNoWeightOut <- as.character(argv[5])
-options <- unlist(strsplit(as.character(argv[6]), ","))
+rdaOut <- as.character(argv[6]);
 normOpt <- as.character(argv[7])
 weightOpt <- as.character(argv[8])
-cpmReq <- as.numeric(argv[9])
-sampleReq <- as.numeric(argv[10])
-factor <- as.character(argv[11])
+contrastData <- as.character(argv[9])
+cpmReq <- as.numeric(argv[10])
+sampleReq <- as.numeric(argv[11])
+factorData <- unlist(strsplit(as.character(argv[12]), "::"))
 
 # Process arguments
-if (any(options=="bcv")){
-    bcvOPT=T;
-    cat("BCV Plot Requested\n")
-} else {
-    bcvOPT=F;
-    cat("BCV Plot Omitted\n")
-
-}
-
-if (any(options=="voom")){
-    voomOPT=T;
-    cat("voom Plot Requested\n")
-} else {
-    voomOPT=F;
-    cat("voom Plot Omitted\n")
-}
-
-if (any(options=="ma")){
-    maOPT=T;
-    cat("MA Plot Requested\n")
-} else {
-    maOPT=F;
-    cat("MA Plot Omitted\n")
-}
-
 if (weightOpt=="yes"){
-    wantWeight=T;
-    cat("Weights used\n")
+    wantWeight=TRUE;
 } else {
-    wantWeight=F;
-    cat("Weights not used\n")
+    wantWeight=FALSE;
 }
-
-factor <- unlist(strsplit(as.character(argv[11]),"::"))
-factorLevelData <- unlist(strsplit(factor[3],","))
+factorLevelData <- unlist(strsplit(factorData[3],","))
+factorLevels <- factor(factorLevelData)
+contrasts <- makeContrasts(contrasts=contrastData, levels=levels(factorLevels))
 
 ###########################################################
 ### BCV (Biological Coefficient of Variation) Analysis
@@ -77,8 +51,6 @@ data$genes <- data$genes[sel, ]
 
 # Creating naming data
 samplenames <- colnames(data$counts)
-factorLevels <- factorLevelData
-factorLevels <- as.factor(factorLevels)
 sampleanno <- data.frame("sampleID"=samplenames, "factorLevels"=factorLevels,
                          "group"=factorLevels)
 
@@ -95,23 +67,21 @@ data <- new("DGEList", data)
 
 # Calculating normalising factor, estimating dispersion and plotting BCV
 data <- calcNormFactors(data, method=normOpt)
-data <- estimateDisp(data, robust=T)
+data <- estimateDisp(data, robust=TRUE)
 pdf(outDir)
 
-if (bcvOPT){
-    plotBCV(data)
-}
+plotBCV(data)
 
 ###########################################################
 ### voom (Mean-variance modelling at the observational level)
 ###########################################################
 
 # Generating design information
-design <- model.matrix(~factorLevels)
-colnames(design)[2] <- "WT"
+design <- model.matrix(~0+factorLevels)
+colnames(design) <- gsub("factorLevels","",colnames(design))
 
 # Generate voom data and Mean-variance plot
-vData <- voom(data, design = design, plot=voomOPT)
+vData <- voom(data, design = design, plot=TRUE)
 
 ###########################################################
 ### Toptabs
@@ -122,40 +92,49 @@ wts <- asMatrixWeights(aw, dim(vData)) * vData$w
 
 # Analysis with voom and sample weights
 voomFit <- lmFit(vData, design, weights=wts)
+voomFit <- contrasts.fit(voomFit, contrasts)
 voomFit <- eBayes(voomFit)
 
 # Generate table of the 20 top ranked genes from linear fit model
-top <- topTable(voomFit, coef=2, number=20, sort.by="P")[, -6]
+top <- topTable(voomFit, coef=1, number=20, sort.by="P")[, -6]
 row.names(top)<-NULL
 top$rank <- 1:20
 top <- data.frame(c(top[10], top[1:9]))
 
 # Generate a topTable for all gene entries and select for those with p-values
 # lower than 0.05
-top <- topTable(voomFit, coef=2, number=Inf, sort.by="P")
+top <- topTable(voomFit, coef=1, number=Inf, sort.by="P")
 
 # Analysis without sample weights
 voomFitNoWeights <- lmFit(vData, design)
+voomFitNoWeights <- contrasts.fit(voomFitNoWeights, contrasts)
 voomFitNoWeights <- eBayes(voomFitNoWeights)
-topNoWeights <- topTable(voomFitNoWeights, coef=2, number=Inf, sort.by="P")
+topNoWeights <- topTable(voomFitNoWeights, coef=1, number=Inf, sort.by="P")
 
 # Write out tables for results with and without weights
-write.csv(top, file=topOut, row.names = F)
-write.csv(topNoWeights, file=topNoWeightOut, row.names = F)
+write.csv(top, file=topOut, row.names=FALSE)
+write.csv(topNoWeights, file=topNoWeightOut, row.names=FALSE)
 
-if (maOPT){
+if (wantWeight){
     # Plot MA (log ratios vs mean average) using limma package on weighted data
-    limma::plotMA(voomFit, array=2, status=decideTests(voomFit[,2]),
-                  main="WT - Smchd1", xlab="Average Expression",
-                  ylab="logFC: WT - Smchd1")
+    status = decideTests(voomFit[,1])
+    limma::plotMA(voomFit, status=status,
+    main="MA Plot with Weights", col=c("black","firebrick","green"),
+    xlab="Average Expression", ylab="logFC")
     abline(h=0, col="grey", lty=2)
-
+    print(summary(status))
+} else {
     # Plot MA (log ratios vs mean average) using limma package on unweighted 
     # data
-    limma::plotMA(voomFitNoWeights, array=2, 
-                  status=decideTests(voomFitNoWeights[,2]),
-                  main="WT - Smchd1", xlab="Average Expression",
-                  ylab="logFC: WT - Smchd1")
+    status = decideTests(voomFitNoWeights[,1])
+    limma::plotMA(voomFitNoWeights, status=status,
+    main="MA Plot without Weights", col=c("black","firebrick","green"),
+    xlab="Average Expression", ylab="logFC")
     abline(h=0, col="grey", lty=2)
+    print(summary(status))
 }
+
+save(data, vData, labels, factorLevels, wts, voomFit, top, voomFitNoWeights, 
+     topNoWeights, file=rdaOut, ascii=TRUE)
+
 invisible(dev.off()) 

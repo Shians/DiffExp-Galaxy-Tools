@@ -13,8 +13,7 @@ annoPath <- as.character(argv[2])
 outDir <- as.character(argv[3])
 factData <- unlist(strsplit(as.character(argv[4]), ","))
 labelData <- unlist(strsplit(as.character(argv[5]), ","))
-cpmReq <- as.numeric(argv[6])
-sampleReq <- as.numeric(argv[7])
+labelSize <- as.numeric(argv[6])
 
 # Load in data
 load(countPath)
@@ -24,11 +23,6 @@ load(annoPath)
 data <- list()
 data$counts <- counts$counts
 data$genes <- geneanno
-
-# Select only the genes that have more than 0.5 cpm in at least 3 samples
-sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
-data$counts <- data$counts[sel, ]
-data$genes <- data$genes[sel, ]
 
 # Creating naming data
 samplenames <- colnames(data$counts)
@@ -50,5 +44,5 @@ data <- new("DGEList", data)
 
 pdf(outDir)
 labels <- labelData
-plotMDS(data, labels=labels, col=as.numeric(factor), cex=0.5)
+plotMDS(data, labels=labels, col=as.numeric(factor), cex=labelSize)
 invisible(dev.off())
