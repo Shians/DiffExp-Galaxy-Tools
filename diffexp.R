@@ -1,3 +1,25 @@
+# This tool takes in a matrix of feature counts as well as gene annotations and
+# outputs a table of top expressions as well as various plots for differential
+# expression analysis
+#
+# ARGS: countPath       -Path to RData input containing counts
+#       annoPath        -Path to RData input containing gene annotations
+#       outDir          -Path to PDF output file for plots
+#       topOut          -Path to csv output file for top table with weights
+#       topNoWeightOut  -Path to csv output file for top table without weights
+#       rdaOut          -Path to RData output for all objects used for plots
+#       normOpt         -String specifying type of normalisation used
+#       weightOpt       -String specifying usage of weights
+#       contrastData    -String containing contrasts of interest
+#       cpmReq          -Float specifying cpm requirement
+#       sampleReq       -Integer specifying cpm requirement
+#       factorData      -String containing factor names and levels
+#
+# OUT:  Voom Plot
+#       BCV Plot
+#       MA Plot
+#       Top Table
+
 # Collects arguments from command line
 argv <- commandArgs(TRUE)
 
@@ -29,11 +51,6 @@ if (weightOpt=="yes"){
 }
 factorLevelData <- unlist(strsplit(factorData[3],","))
 factorLevels <- factor(factorLevelData)
-contrasts <- makeContrasts(contrasts=contrastData, levels=levels(factorLevels))
-
-###########################################################
-### BCV (Biological Coefficient of Variation) Analysis
-###########################################################
 
 # Load in data
 load(countPath)
@@ -44,7 +61,8 @@ data <- list()
 data$counts <- counts$counts
 data$genes <- geneanno
 
-# Select only the genes that have more than 0.5 cpm in at least 3 samples
+# Filter out genes that do not have a required cpm in a required number of
+# samples
 sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data$counts <- data$counts[sel, ]
 data$genes <- data$genes[sel, ]
@@ -54,72 +72,55 @@ samplenames <- colnames(data$counts)
 sampleanno <- data.frame("sampleID"=samplenames, "factorLevels"=factorLevels,
                          "group"=factorLevels)
 
-# Attaching the naming data, library size and norming factor
+# Generating the DGEList object "data"
 data$samples <- sampleanno
 data$samples$lib.size <- colSums(data$counts)
 data$samples$norm.factors <- 1
-
-# Naming the sample data
 row.names(data$samples) <- colnames(data$counts)
-
-# Giving data the "DGEList" type
 data <- new("DGEList", data)
 
-# Calculating normalising factor, estimating dispersion and plotting BCV
+# Calculating normalising factor, estimating dispersion
 data <- calcNormFactors(data, method=normOpt)
 data <- estimateDisp(data, robust=TRUE)
+
+# Opening connection to output file
 pdf(outDir)
 
-plotBCV(data)
-
-###########################################################
-### voom (Mean-variance modelling at the observational level)
-###########################################################
+plotBCV(data, main="BCV Plot")
 
 # Generating design information
 design <- model.matrix(~0+factorLevels)
 colnames(design) <- gsub("factorLevels","",colnames(design))
+contrasts <- makeContrasts(contrasts=contrastData, levels=design)
 
 # Generate voom data and Mean-variance plot
 vData <- voom(data, design = design, plot=TRUE)
 
-###########################################################
-### Toptabs
-###########################################################
 # Generating weights
 aw <- arrayWeights(vData, design)
 wts <- asMatrixWeights(aw, dim(vData)) * vData$w
 
-# Analysis with voom and sample weights
+# Generating fit data and top table with weights
 voomFit <- lmFit(vData, design, weights=wts)
 voomFit <- contrasts.fit(voomFit, contrasts)
 voomFit <- eBayes(voomFit)
-
-# Generate table of the 20 top ranked genes from linear fit model
-top <- topTable(voomFit, coef=1, number=20, sort.by="P")[, -6]
-row.names(top)<-NULL
-top$rank <- 1:20
-top <- data.frame(c(top[10], top[1:9]))
-
-# Generate a topTable for all gene entries and select for those with p-values
-# lower than 0.05
 top <- topTable(voomFit, coef=1, number=Inf, sort.by="P")
 
-# Analysis without sample weights
+# Generating fit data and top table without weights
 voomFitNoWeights <- lmFit(vData, design)
 voomFitNoWeights <- contrasts.fit(voomFitNoWeights, contrasts)
 voomFitNoWeights <- eBayes(voomFitNoWeights)
 topNoWeights <- topTable(voomFitNoWeights, coef=1, number=Inf, sort.by="P")
 
 # Write out tables for results with and without weights
-write.csv(top, file=topOut, row.names=FALSE)
-write.csv(topNoWeights, file=topNoWeightOut, row.names=FALSE)
+write.table(top, file=topOut, row.names=FALSE, sep="\t")
+write.table(topNoWeights, file=topNoWeightOut, row.names=FALSE, sep="\t")
 
 if (wantWeight){
     # Plot MA (log ratios vs mean average) using limma package on weighted data
     status = decideTests(voomFit[,1])
     limma::plotMA(voomFit, status=status,
-    main="MA Plot with Weights", col=c("black","firebrick","green"),
+    main=paste("MA Plot:", contrastData), col=c("black","firebrick","green"),
     xlab="Average Expression", ylab="logFC")
     abline(h=0, col="grey", lty=2)
     print(summary(status))
@@ -128,7 +129,7 @@ if (wantWeight){
     # data
     status = decideTests(voomFitNoWeights[,1])
     limma::plotMA(voomFitNoWeights, status=status,
-    main="MA Plot without Weights", col=c("black","firebrick","green"),
+    main=paste("MA Plot:", contrastData), col=c("black","firebrick","green"),
     xlab="Average Expression", ylab="logFC")
     abline(h=0, col="grey", lty=2)
     print(summary(status))

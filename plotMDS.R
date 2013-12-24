@@ -9,20 +9,17 @@ library(splines, quietly=T, warn.conflicts=F)
 
 # Grab Arguments
 countPath <- as.character(argv[1])
-annoPath <- as.character(argv[2])
-outDir <- as.character(argv[3])
-factData <- unlist(strsplit(as.character(argv[4]), ","))
-labelData <- unlist(strsplit(as.character(argv[5]), ","))
-labelSize <- as.numeric(argv[6])
+outDir <- as.character(argv[2])
+factData <- unlist(strsplit(as.character(argv[3]), ","))
+labelData <- unlist(strsplit(as.character(argv[4]), ","))
+labelSize <- as.numeric(argv[5])
 
 # Load in data
 load(countPath)
-load(annoPath)
 
-# Extract counts and annotation data
+# Extract counts
 data <- list()
 data$counts <- counts$counts
-data$genes <- geneanno
 
 # Creating naming data
 samplenames <- colnames(data$counts)
@@ -35,11 +32,7 @@ sampleanno <- data.frame("sampleID"=samplenames, "factor"=factor,
 data$samples <- sampleanno
 data$samples$lib.size <- colSums(data$counts)
 data$samples$norm.factors <- 1
-
-# Naming the sample data
 row.names(data$samples) <- colnames(data$counts)
-
-# Giving data the "DGEList" type
 data <- new("DGEList", data)
 
 pdf(outDir)

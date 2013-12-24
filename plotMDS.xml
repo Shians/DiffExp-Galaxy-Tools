@@ -4,16 +4,14 @@
     </description>
     
     <command interpreter="RScript">
-        plotMDS.R $countPath $annoPath $outDir $factData $labelData $labelSize
+        plotMDS.R $countPath $outDir $factData $labelData $labelSize
 
     </command>
     
     <inputs>
-        <param name="countPath" type="data" format="rda" label="Counts Data"/>
+        <param name="countPath" type="data" format="rda" label="Counts Data"
+               help="No data? See help section below!"/>
         
-        <param name="annoPath" type="data" format="rda"
-               label="Gene Annotations"/>
-               
         <param name="factData" type="text" size="100"
                label="Factor Levels"
                help="In order matching the columns of the counts matrix"/>
