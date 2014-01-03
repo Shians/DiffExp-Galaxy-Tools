@@ -64,17 +64,29 @@ if (robustOpt=="yes"){
     wantRobust <- FALSE
 }
 
+if (annoPath=="None"){
+    haveAnno <- FALSE
+} else {
+    haveAnno <- TRUE
+}
+
 factorLevelData <- unlist(strsplit(factorData[3],","))
 factorLevels <- factor(factorLevelData)
 
 # Read in data
 counts <- read.table(countPath)
-geneanno <- read.table(annoPath)
+if (haveAnno){
+    geneanno <- read.table(annoPath)
+}
 
 # Extract counts and annotation data
 data <- list()
 data$counts <- counts
-data$genes <- geneanno
+if (haveAnno){
+    data$genes <- geneanno
+} else {
+    data$genes <- data.frame(GeneID=row.names(counts))
+}
 
 # Filter out genes that do not have a required cpm in a required number of
 # samples

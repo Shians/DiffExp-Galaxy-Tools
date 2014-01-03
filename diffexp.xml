@@ -12,20 +12,28 @@
   </requirements>
 
   <command interpreter="RScript">
-      diffexp.R $counts $geneanno $pdfout $top $topNW           <!--5-->
+      diffexp.R $counts 
+                
+                #if $anno.annoOpt=="yes":
+                  $geneanno 
+                #else
+                  None
+                #end if
+                
+                $pdfout $top $topNW                             <!--5-->
                 $wantRda.rdaOption $rdaOut                      <!--7-->
                 $normalisationOption $weightCond.weightOption   <!--10-->
                 $robustCond.robustOption $contrast
                 <!--If filtering is required then input filter options, 
                 otherwise enter 0 0 as the options-->
                 #if $filterCPM.filterLowCPM=="yes":
-                    $filterCPM.cpmReq $filterCPM.sampleReq
+                  $filterCPM.cpmReq $filterCPM.sampleReq
                 #else
-                    0 0
+                  0 0
                 #end if                                         <!--13-->
                 
                 #for $i, $fct in enumerate($factors):
-                    factor::$fct.factName::$fct.factLevel
+                  factor::$fct.factName::$fct.factLevel
                 #end for
                 
   </command>
@@ -33,9 +41,19 @@
   <inputs>
       <param name="counts" type="data" format="tabular" label="Counts Data"/>
       
-      <param name="geneanno" type="data" format="tabular"
-             label="Gene Annotations"/>
-      
+      <conditional name="anno">
+          <param name="annoOpt" type="select" label="Use Gene Annotations"
+                 help="Annotations will be added to table of top expressions
+                       to provide descriptions for each gene">
+                 <option value="no">No</option>
+                 <option value="yes">Yes</option>
+          </param>
+          <when value="yes">
+            <param name="geneanno" type="data" format="tabular"
+                   label="Gene Annotations"/>
+          </when>
+      </conditional>
+                   
       <repeat name="factors" title="Factors" min="1" max="5" default="1">
           <param name="factName" type="text" label="Factor Name (No spaces)"
                  help="Eg. Genotype"/>
