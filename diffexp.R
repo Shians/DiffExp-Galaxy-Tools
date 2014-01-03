@@ -35,30 +35,45 @@ annoPath <- as.character(argv[2])
 outDir <- as.character(argv[3])
 topOut <- as.character(argv[4])
 topNoWeightOut <- as.character(argv[5])
-rdaOut <- as.character(argv[6]);
-normOpt <- as.character(argv[7])
-weightOpt <- as.character(argv[8])
-contrastData <- as.character(argv[9])
-cpmReq <- as.numeric(argv[10])
-sampleReq <- as.numeric(argv[11])
-factorData <- unlist(strsplit(as.character(argv[12]), "::"))
+rdaOpt <- as.character(argv[6])
+rdaOut <- as.character(argv[7])
+normOpt <- as.character(argv[8])
+weightOpt <- as.character(argv[9])
+robustOpt <- as.character(argv[10])
+contrastData <- as.character(argv[11])
+cpmReq <- as.numeric(argv[12])
+sampleReq <- as.numeric(argv[13])
+factorData <- unlist(strsplit(as.character(argv[14]), "::"))
 
 # Process arguments
 if (weightOpt=="yes"){
-    wantWeight=TRUE;
+    wantWeight <- TRUE
 } else {
-    wantWeight=FALSE;
+    wantWeight <- FALSE
 }
+
+if (rdaOpt=="yes"){
+    wantRda <- TRUE
+} else {
+    wantRda <- FALSE
+}
+
+if (robustOpt=="yes"){
+    wantRobust <- TRUE
+} else {
+    wantRobust <- FALSE
+}
+
 factorLevelData <- unlist(strsplit(factorData[3],","))
 factorLevels <- factor(factorLevelData)
 
-# Load in data
-load(countPath)
-load(annoPath)
+# Read in data
+counts <- read.table(countPath)
+geneanno <- read.table(annoPath)
 
 # Extract counts and annotation data
 data <- list()
-data$counts <- counts$counts
+data$counts <- counts
 data$genes <- geneanno
 
 # Filter out genes that do not have a required cpm in a required number of
@@ -81,7 +96,7 @@ data <- new("DGEList", data)
 
 # Calculating normalising factor, estimating dispersion
 data <- calcNormFactors(data, method=normOpt)
-data <- estimateDisp(data, robust=TRUE)
+data <- estimateDisp(data, robust=wantRobust)
 
 # Opening connection to output file
 pdf(outDir)
@@ -100,23 +115,14 @@ vData <- voom(data, design = design, plot=TRUE)
 aw <- arrayWeights(vData, design)
 wts <- asMatrixWeights(aw, dim(vData)) * vData$w
 
-# Generating fit data and top table with weights
-voomFit <- lmFit(vData, design, weights=wts)
-voomFit <- contrasts.fit(voomFit, contrasts)
-voomFit <- eBayes(voomFit)
-top <- topTable(voomFit, coef=1, number=Inf, sort.by="P")
-
-# Generating fit data and top table without weights
-voomFitNoWeights <- lmFit(vData, design)
-voomFitNoWeights <- contrasts.fit(voomFitNoWeights, contrasts)
-voomFitNoWeights <- eBayes(voomFitNoWeights)
-topNoWeights <- topTable(voomFitNoWeights, coef=1, number=Inf, sort.by="P")
-
-# Write out tables for results with and without weights
-write.table(top, file=topOut, row.names=FALSE, sep="\t")
-write.table(topNoWeights, file=topNoWeightOut, row.names=FALSE, sep="\t")
-
 if (wantWeight){
+    # Generating fit data and top table with weights
+    voomFit <- lmFit(vData, design, weights=wts)
+    voomFit <- contrasts.fit(voomFit, contrasts)
+    voomFit <- eBayes(voomFit)
+    top <- topTable(voomFit, coef=1, number=Inf, sort.by="P")
+    write.table(top, file=topOut, row.names=FALSE, sep="\t")
+    
     # Plot MA (log ratios vs mean average) using limma package on weighted data
     status = decideTests(voomFit[,1])
     limma::plotMA(voomFit, status=status,
@@ -125,6 +131,13 @@ if (wantWeight){
     abline(h=0, col="grey", lty=2)
     print(summary(status))
 } else {
+    # Generating fit data and top table without weights
+    voomFitNoWeights <- lmFit(vData, design)
+    voomFitNoWeights <- contrasts.fit(voomFitNoWeights, contrasts)
+    voomFitNoWeights <- eBayes(voomFitNoWeights)
+    topNoWeights <- topTable(voomFitNoWeights, coef=1, number=Inf, sort.by="P")
+    write.table(topNoWeights, file=topNoWeightOut, row.names=FALSE, sep="\t")
+    
     # Plot MA (log ratios vs mean average) using limma package on unweighted 
     # data
     status = decideTests(voomFitNoWeights[,1])
@@ -135,7 +148,15 @@ if (wantWeight){
     print(summary(status))
 }
 
-save(data, vData, labels, factorLevels, wts, voomFit, top, voomFitNoWeights, 
-     topNoWeights, file=rdaOut, ascii=TRUE)
+if (wantRda){
+    if (wantWeight){
+        save(data, vData, labels, factorLevels, wts, voomFit, top,
+             file=rdaOut, ascii=TRUE)
+    } else {
+        save(data, vData, labels, factorLevels, wts, voomFitNoWeights, 
+             topNoWeights, 
+             file=rdaOut, ascii=TRUE)
+    }
+}
 
 invisible(dev.off()) 

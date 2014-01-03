@@ -1,6 +1,6 @@
 # Collects arguments from command line
 argv <- commandArgs(TRUE)
-
+argv
 # Load all required libraries
 library(edgeR, quietly=T, warn.conflicts=F)
 library(limma, quietly=T, warn.conflicts=F)

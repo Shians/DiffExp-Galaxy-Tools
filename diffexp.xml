@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="0.0.6">
+<tool id="diffexp" name="DiffExp" version="0.0.7">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -7,18 +7,22 @@
   <requirements>
       <requirement type="R-module">edgeR</requirement>
       <requirement type="R-module">limma</requirement>
+      <requirement type="R-module">statmod</requirement>
+      <requirement type="R-module">splines</requirement>
   </requirements>
 
   <command interpreter="RScript">
-      diffexp.R $counts $geneanno $pdfout $top $topNW $rdaOut      <!--6-->
-                $normalisationOption $wantWeight.weightOption      <!--8-->
-                $contrast
-                
+      diffexp.R $counts $geneanno $pdfout $top $topNW           <!--5-->
+                $wantRda.rdaOption $rdaOut                      <!--7-->
+                $normalisationOption $weightCond.weightOption   <!--10-->
+                $robustCond.robustOption $contrast
+                <!--If filtering is required then input filter options, 
+                otherwise enter 0 0 as the options-->
                 #if $filterCPM.filterLowCPM=="yes":
-                    $filterCPM['cpmReq'] $filterCPM['sampleReq']
+                    $filterCPM.cpmReq $filterCPM.sampleReq
                 #else
                     0 0
-                #end if                                            <!--10-->
+                #end if                                         <!--13-->
                 
                 #for $i, $fct in enumerate($factors):
                     factor::$fct.factName::$fct.factLevel
@@ -27,9 +31,9 @@
   </command>
    
   <inputs>
-      <param name="counts" type="data" format="rda" label="Counts Data"/>
+      <param name="counts" type="data" format="tabular" label="Counts Data"/>
       
-      <param name="geneanno" type="data" format="rda"
+      <param name="geneanno" type="data" format="tabular"
              label="Gene Annotations"/>
       
       <repeat name="factors" title="Factors" min="1" max="5" default="1">
@@ -68,7 +72,7 @@
           <option value="none">None (Don't normalise)</option>
       </param>
       
-      <conditional name="wantWeight">
+      <conditional name="weightCond">
           <param name="weightOption" type="select" label="Apply weights"
                  display="radio" help="Apply weights if outliers are present">
             <option value="no">No</option>
@@ -76,9 +80,19 @@
           </param>
       </conditional>
       
+      <conditional name="robustCond">
+          <param name="robustOption" type="select" label="Use Robust Regression"
+                 display="radio"
+                 help="Use robust regression when sample size is small">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </param>
+      </conditional>
+      
       <conditional name="wantRda">
           <param name="rdaOption" type="select" label="Output RData"
-                help="Output all the data R used to construct the plots, can 
+                 display="radio"
+                 help="Output all the data R used to construct the plots, can 
                       be used to apply custom titles and labels">
             <option value="no">No</option>
             <option value="yes">Yes</option>
@@ -90,11 +104,11 @@
       <data name="pdfout" format="pdf" label="Plots"/>
       
       <data name="top" format="txt" label="Top Expressions">
-          <filter>wantWeight['weightOption']=="yes"</filter>
+          <filter>weightCond['weightOption']=="yes"</filter>
       </data>
         
       <data name="topNW" format="txt" label="Top Expressions (no weights)">
-          <filter>wantWeight['weightOption']=="no"</filter>
+          <filter>weightCond['weightOption']=="no"</filter>
       </data>
     
       <data name="rdaOut" format="rda" label="RData">
