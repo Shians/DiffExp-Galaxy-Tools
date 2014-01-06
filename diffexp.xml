@@ -1,138 +1,136 @@
-<tool id="diffexp" name="DiffExp" version="0.0.7">
+<tool id="diffexp" name="DiffExp" version="1.0.0">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
   </description>
   
   <requirements>
-      <requirement type="R-module">edgeR</requirement>
-      <requirement type="R-module">limma</requirement>
-      <requirement type="R-module">statmod</requirement>
-      <requirement type="R-module">splines</requirement>
+    <requirement type="R-module">edgeR</requirement>
+    <requirement type="R-module">limma</requirement>
+    <requirement type="R-module">statmod</requirement>
+    <requirement type="R-module">splines</requirement>
   </requirements>
 
   <command interpreter="RScript">
-      diffexp.R $counts 
-                
-                #if $anno.annoOpt=="yes":
-                  $geneanno 
-                #else
-                  None
-                #end if
-                
-                $pdfout $top $topNW                             <!--5-->
-                $wantRda.rdaOption $rdaOut                      <!--7-->
-                $normalisationOption $weightCond.weightOption   <!--10-->
-                $robustCond.robustOption $contrast
-                <!--If filtering is required then input filter options, 
-                otherwise enter 0 0 as the options-->
-                #if $filterCPM.filterLowCPM=="yes":
-                  $filterCPM.cpmReq $filterCPM.sampleReq
-                #else
-                  0 0
-                #end if                                         <!--13-->
-                
-                #for $i, $fct in enumerate($factors):
-                  factor::$fct.factName::$fct.factLevel
-                #end for
-                
+    diffexp.R $counts 
+              
+              #if $anno.annoOpt=="yes":
+                $geneanno 
+              #else
+                None
+              #end if
+              
+              $outFile $outFile.files_path $wantRda.rdaOption <!--5-->
+              $normalisationOption $weightCond.weightOption   <!--7-->
+              $robustCond.robustOption $contrast
+              <!--If filtering is required then input filter options, 
+              otherwise enter 0 0 as the options-->
+              #if $filterCPM.filterLowCPM=="yes":
+                $filterCPM.cpmReq $filterCPM.sampleReq
+              #else
+                0 0
+              #end if                                         <!--11-->
+              
+              #for $i, $fct in enumerate($factors):
+                factor::$fct.factName::$fct.factLevel
+              #end for
+               
   </command>
    
   <inputs>
-      <param name="counts" type="data" format="tabular" label="Counts Data"/>
+    <param name="counts" type="data" format="tabular" label="Counts Data"/>
       
-      <conditional name="anno">
-          <param name="annoOpt" type="select" label="Use Gene Annotations"
-                 help="Annotations will be added to table of top expressions
-                       to provide descriptions for each gene">
-                 <option value="no">No</option>
-                 <option value="yes">Yes</option>
-          </param>
-          <when value="yes">
-            <param name="geneanno" type="data" format="tabular"
-                   label="Gene Annotations"/>
-          </when>
-      </conditional>
+    <conditional name="anno">
+      <param name="annoOpt" type="select" label="Use Gene Annotations"
+             help="Annotations will be added to table of top expressions
+                   to provide descriptions for each gene">
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </param>
+      
+      <when value="yes">
+        <param name="geneanno" type="data" format="tabular"
+               label="Gene Annotations"/>
+        </when>
+    </conditional>
                    
-      <repeat name="factors" title="Factors" min="1" max="5" default="1">
-          <param name="factName" type="text" label="Factor Name (No spaces)"
-                 help="Eg. Genotype"/>
-          <param name="factLevel" type="text" size="100"
-                 label="Factor Levels (No spaces)"
-                 help="Eg. WT,WT,Mut,Mut,WT"/>
-      </repeat>
+    <repeat name="factors" title="Factors" min="1" max="5" default="1">
+      <param name="factName" type="text" label="Factor Name (No spaces)"
+             help="Eg. Genotype"/>
+        <param name="factLevel" type="text" size="100"
+               label="Factor Levels (No spaces)"
+               help="Eg. WT,WT,Mut,Mut,WT"/>
+    </repeat>
+    
+    <param name="contrast" type="text" size="30"
+           label="Contrast of interest (No spaces)"
+           help="Eg. WT-Mut"/>
+    
+    <conditional name="filterCPM">
+      <param name="filterLowCPM" type="select" label="Filter Low CPM">
+        <option value="yes" selected="True">Yes</option>
+        <option value="no">No</option>
+      </param>
       
-      <param name="contrast" type="text" size="30"
-             label="Contrast of interest (No spaces)"
-             help="Eg. WT-Mut"/>
-      
-      <conditional name="filterCPM">
-          <param name="filterLowCPM" type="select" label="Filter Low CPM">
-                 <option value="yes" selected="True">Yes</option>
-                 <option value="no">No</option>
-          </param>
-          <when value="yes">
+        <when value="yes">
           <param name="cpmReq" type="float" value="0.5" min="0" max="1"
-                 label="Minimum CPM"/>
+                  label="Minimum CPM"/>
           <param name="sampleReq" type="integer" value="3" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
-                      CPM in at least this many samples"/>
-          </when>
-          <when value="no"/>
-      </conditional>
+                       CPM in at least this many samples"/>
+        </when>
+        
+        <when value="no"/>
+        
+    </conditional>
+       
+    <param name="normalisationOption" type="select" 
+           label="Normalisation Method">
+           
+      <option value="TMM">TMM</option>
+      <option value="RLE">RLE</option>
+      <option value="upperquartile">Upperquartile</option>
+      <option value="none">None (Don't normalise)</option>
       
-      <param name="normalisationOption" type="select" 
-             label="Normalisation Method">
-          <option value="TMM">TMM</option>
-          <option value="RLE">RLE</option>
-          <option value="upperquartile">Upperquartile</option>
-          <option value="none">None (Don't normalise)</option>
+    </param>
+    
+    <conditional name="weightCond">
+      <param name="weightOption" type="select" label="Apply weights"
+             display="radio" help="Apply weights if outliers are present">
+             
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+        
       </param>
-      
-      <conditional name="weightCond">
-          <param name="weightOption" type="select" label="Apply weights"
-                 display="radio" help="Apply weights if outliers are present">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </param>
-      </conditional>
-      
-      <conditional name="robustCond">
-          <param name="robustOption" type="select" label="Use Robust Regression"
-                 display="radio"
-                 help="Use robust regression when sample size is small">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </param>
-      </conditional>
-      
-      <conditional name="wantRda">
-          <param name="rdaOption" type="select" label="Output RData"
-                 display="radio"
-                 help="Output all the data R used to construct the plots, can 
-                      be used to apply custom titles and labels">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </param>
-      </conditional>
+    </conditional>
+    
+    <conditional name="robustCond">
+      <param name="robustOption" type="select" label="Use Robust Regression"
+             display="radio"
+             help="Use robust regression when sample size is small">
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </param>
+    </conditional>
+    
+    <conditional name="wantRda">
+      <param name="rdaOption" type="select" label="Output RData"
+             display="radio"
+             help="Output all the data R used to construct the plots, can 
+                  be used to apply custom titles and labels">
+                  
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+        
+      </param>
+    </conditional>
   </inputs>
   
   <outputs>
-      <data name="pdfout" format="pdf" label="Plots"/>
-      
-      <data name="top" format="txt" label="Top Expressions">
-          <filter>weightCond['weightOption']=="yes"</filter>
-      </data>
-        
-      <data name="topNW" format="txt" label="Top Expressions (no weights)">
-          <filter>weightCond['weightOption']=="no"</filter>
-      </data>
-    
-      <data name="rdaOut" format="rda" label="RData">
-          <filter>wantRda['rdaOption']=="yes"</filter>
-      </data>
+      <data format="html" name="outFile" label="DiffExp Output"/>
   </outputs>
+    
   
   <help>
       Help is on its way!
