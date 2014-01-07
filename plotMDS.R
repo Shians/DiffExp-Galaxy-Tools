@@ -15,11 +15,11 @@ labelData <- unlist(strsplit(as.character(argv[4]), ","))
 labelSize <- as.numeric(argv[5])
 
 # Load in data
-load(countPath)
+counts <- read.table(countPath)
 
 # Extract counts
 data <- list()
-data$counts <- counts$counts
+data$counts <- counts
 
 # Creating naming data
 samplenames <- colnames(data$counts)

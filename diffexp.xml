@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.0">
+<tool id="diffexp" name="DiffExp" version="1.0.2">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -22,17 +22,17 @@
               
               $outFile $outFile.files_path $wantRda.rdaOption <!--5-->
               $normalisationOption $weightCond.weightOption   <!--7-->
-              $robustCond.robustOption $contrast
+              $contrast
               <!--If filtering is required then input filter options, 
               otherwise enter 0 0 as the options-->
               #if $filterCPM.filterLowCPM=="yes":
                 $filterCPM.cpmReq $filterCPM.sampleReq
               #else
                 0 0
-              #end if                                         <!--11-->
+              #end if                                         <!--10-->
               
               #for $i, $fct in enumerate($factors):
-                factor::$fct.factName::$fct.factLevel
+                $fct.factName::$fct.factLevel
               #end for
                
   </command>
@@ -102,15 +102,6 @@
         <option value="no">No</option>
         <option value="yes">Yes</option>
         
-      </param>
-    </conditional>
-    
-    <conditional name="robustCond">
-      <param name="robustOption" type="select" label="Use Robust Regression"
-             display="radio"
-             help="Use robust regression when sample size is small">
-        <option value="no">No</option>
-        <option value="yes">Yes</option>
       </param>
     </conditional>
     

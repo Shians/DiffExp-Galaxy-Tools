@@ -9,7 +9,7 @@
     </command>
     
     <inputs>
-        <param name="countPath" type="data" format="rda" label="Counts Data"
+        <param name="countPath" type="data" format="tabular" label="Counts Data"
                help="No data? See help section below!"/>
         
         <param name="factData" type="text" size="100"
@@ -30,6 +30,10 @@
     </outputs>
     
     <help>
-        
+      .. class:: warningmark
+    
+      '''TIP''' This tool requires tabular format. If you cannot find your data
+      file then click the name of the data file in the history panel and check
+      that the format is tabular.
     </help>
 </tool>
