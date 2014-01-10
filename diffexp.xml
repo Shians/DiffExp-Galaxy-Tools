@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.2">
+<tool id="diffexp" name="DiffExp" version="1.0.3">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -31,9 +31,12 @@
                 0 0
               #end if                                         <!--10-->
               
+              <!--*Code commented until solution for multiple factors is found*
               #for $i, $fct in enumerate($factors):
                 $fct.factName::$fct.factLevel
               #end for
+              -->
+              $factName::$factLevel
                
   </command>
    
@@ -41,7 +44,7 @@
     <param name="counts" type="data" format="tabular" label="Counts Data"/>
       
     <conditional name="anno">
-      <param name="annoOpt" type="select" label="Use Gene Annotations"
+      <param name="annoOpt" type="select" label="Use Gene Annotations?"
              help="Annotations will be added to table of top expressions
                    to provide descriptions for each gene">
         <option value="no">No</option>
@@ -53,7 +56,8 @@
                label="Gene Annotations"/>
         </when>
     </conditional>
-                   
+
+    <!--*Code commented until solution for multiple factors is found*
     <repeat name="factors" title="Factors" min="1" max="5" default="1">
       <param name="factName" type="text" label="Factor Name (No spaces)"
              help="Eg. Genotype"/>
@@ -61,13 +65,22 @@
                label="Factor Levels (No spaces)"
                help="Eg. WT,WT,Mut,Mut,WT"/>
     </repeat>
+    -->
+    
+    <param name="factName" type="text" label="Factor Name (No spaces)"
+           help="Eg. Genotype"/>
+    <param name="factLevel" type="text" size="100"
+           label="Factor Values (No spaces)"
+           help="Eg. WT,WT,Mut,Mut,WT... NOTE: Please ensure that the same
+           		 levels are typed identically when repeated, with all cases
+           		 matching."/>
     
     <param name="contrast" type="text" size="30"
-           label="Contrast of interest (No spaces)"
-           help="Eg. WT-Mut"/>
+           label="Contrasts of interest (No spaces)"
+           help="Eg. Mut-WT,KD-Control"/>
     
     <conditional name="filterCPM">
-      <param name="filterLowCPM" type="select" label="Filter Low CPM">
+      <param name="filterLowCPM" type="select" label="Filter Low CPM?">
         <option value="yes" selected="True">Yes</option>
         <option value="no">No</option>
       </param>
@@ -96,7 +109,7 @@
     </param>
     
     <conditional name="weightCond">
-      <param name="weightOption" type="select" label="Apply weights"
+      <param name="weightOption" type="select" label="Apply sample weights?"
              display="radio" help="Apply weights if outliers are present">
              
         <option value="no">No</option>
@@ -106,10 +119,10 @@
     </conditional>
     
     <conditional name="wantRda">
-      <param name="rdaOption" type="select" label="Output RData"
+      <param name="rdaOption" type="select" label="Output RData?"
              display="radio"
-             help="Output all the data R used to construct the plots, can 
-                  be used to apply custom titles and labels">
+             help="Output all the data R used to construct the plots,
+                   can be loaded into R">
                   
         <option value="no">No</option>
         <option value="yes">Yes</option>
@@ -123,7 +136,135 @@
   </outputs>
     
   
-  <help>
-      Help is on its way!
-  </help>
+<help>
+.. class:: warningmark
+
+This tool is dependent on the R packages limma_ and edgeR_ as a part of the
+bioconductor project. Please ensure that these packages are installed on the
+server running this tool.
+
+**Counts Data:**
+A matrix of expression level with rows corresponding to particular genes
+and columns corresponding to the feature count in particular samples.
+Values must be tab separated and there must be a row for the sample/column
+labels and a column for the row/gene labels.::
+
+	"Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
+	"27395"	1699	1528	1463	1441	1495
+	"18777"	1905	1744	1345	1291	1346
+	"15037"	6	8	4	5	5
+	"21399"	2099	1974	1574	1519	1654
+	"58175"	356	312	347	361	346
+	"10866"	2528	2438	1762	1942	2027
+	"12421"	2182	2005	1786	1799	1858
+	"24069"	3	4	2	3	3
+	"31926"	1337	1380	1004	1102	1000
+	"71096"	0	0	2	1	6
+	"59014"	1466	1426	1296	1097	1175
+	...
+
+NOTE: The column labels look misaligned with the columns due to the
+presence of row labels, this is read correctly into R which proccesses the
+data.
+
+**Gene Annotations:**
+Optional input for gene annotations, this can contain more
+information about the genes than just an ID number. The annotations will
+be avaiable in the top expressions table.
+
+**Factor Name:**
+The name of the factor being investigated. This tool currently assumes
+that only one factor is of interest.
+
+**Factor Levels:**
+The levels of the factor of interest, this must be entered in the same
+order as the samples to which the levels correspond as listed in the
+columns of the counts matrix. 
+
+.. class:: warningmark
+
+The values should be seperated by commas and spaces must not be used.
+
+**Contrasts of Interest**
+The contrasts you wish to make between levels. 
+
+.. class:: infomark
+
+Common contrasts would be a simple difference between two levels: "Mut-WT" 
+represents the difference between the mutant and wild type genotypes.
+
+.. class:: warningmark
+
+The values should be seperated by commas and spaces must not be used.
+
+**Filter Low CPM:**
+Option to ignore the genes that do not show significant levels of
+expression, this removes from the counts matrix the rows corresponding to 
+genes that do not express more than some counts per million specified by
+**Minimum CPM** in at least the number of samples specified by **Minimum
+Samples**. The result is that genes that do not show significant levels of
+expression are treated as unexpressed.
+
+.. class:: warningmark
+
+The sample number requirement should at most be equal to number of samples
+in the level with the least number of samples. ie. if you have 4 levels in
+your factor with 2 samples of each level, the value should be reduced from
+the default 3 to 2.
+
+
+**Normalisation Method:**
+Option for using different methods to rescale the raw library
+size. For more information, see calcNormFactor section in the edgeR_ user's
+manual.
+
+**Apply Sample Weights:**
+Option to downweight outlier samples such that their information is still
+used in the statistical analysis but their impact is reduced. Use this
+whenever severe outliers are present.
+
+**Citations:**
+
+.. class:: infomark
+
+limma
+
+Please cite the paper below for the limma software itself.  Please also try
+to cite the appropriate methodology articles that describe the statistical
+methods implemented in limma, depending on which limma functions you are
+using.  The methodology articles are listed in Section 2.1 of the limma 
+User's Guide.
+
+	* Smyth, GK (2005). Limma: linear models for microarray data. In: 
+	  'Bioinformatics and Computational Biology Solutions using R and 
+	  Bioconductor'. R. Gentleman, V. Carey, S. Dudoit, R. Irizarry, 
+	  W. Huber (eds), Springer, New York, pages 397-420.
+
+.. class:: infomark
+
+edgeR
+
+Please cite the first paper for the software itself and the other papers for
+the various original statistical methods implemented in edgeR.  See 
+Section 1.2 in the User's Guide for more detail.
+
+	* Robinson MD, McCarthy DJ and Smyth GK (2010). edgeR: a Bioconductor 
+	  package for differential expression analysis of digital gene expression 
+	  data. Bioinformatics 26, 139-140
+	  
+	* Robinson MD and Smyth GK (2007). Moderated statistical tests for assessing 
+	  differences in tag abundance. Bioinformatics 23, 2881-2887
+	  
+	* Robinson MD and Smyth GK (2008). Small-sample estimation of negative 
+	  binomial dispersion, with applications to SAGE data.
+	  Biostatistics, 9, 321-332
+	  
+	* McCarthy DJ, Chen Y and Smyth GK (2012). Differential expression analysis 
+	  of multifactor RNA-Seq experiments with respect to biological variation. 
+	  Nucleic Acids Research 40, 4288-4297
+
+.. _edgeR: http://www.bioconductor.org/packages/release/bioc/html/edgeR.html
+.. _limma: http://www.bioconductor.org/packages/release/bioc/html/limma.html
+
+</help>
 </tool>

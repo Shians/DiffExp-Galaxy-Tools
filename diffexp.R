@@ -84,17 +84,23 @@ contrastData <- unlist(strsplit(contrastData, split=","))
 
 # Generate output paths
 dir.create(outPath)
-bcvOut <- paste0(outPath, "/bcvplot.png")
-voomOut <- paste0(outPath, "/voomplot.png")
+makeOut <- function(filename){
+  return(paste0(outPath, "/", filename))
+}
+
+bcvOutPdf <- makeOut("bcvplot.pdf")
+bcvOutPng <- makeOut("bcvplot.png")
+voomOutPdf <- makeOut("voomplot.pdf")
+voomOutPng <- makeOut("voomplot.png")
 maOutPdf <- character()   # Initialise character vector
 maOutPng <- character()
 topOut <- character()
 for (i in 1:length(contrastData)){
-  maOutPdf[i] <- paste0(outPath, "/maplot(", contrastData[i], ").pdf")
-  maOutPng[i] <- paste0(outPath, "/maplot(", contrastData[i], ").png")
-  topOut[i] <- paste0(outPath, "/toptab(", contrastData[i], ").tsv")
+  maOutPdf[i] <- makeOut(paste0("maplot(", contrastData[i], ").pdf"))
+  maOutPng[i] <- makeOut(paste0("maplot(", contrastData[i], ").png"))
+  topOut[i] <- makeOut(paste0("toptab(", contrastData[i], ").tsv"))
 }
-rdaOut <- paste0(outPath, "/objectDump.rda")
+rdaOut <- makeOut("objectDump.rda")
 
 # Initiate data for html links
 linkData <- data.frame(Label=character(), Link=character(),
@@ -129,7 +135,7 @@ data$genes <- data$genes[sel, ]
 
 # Creating naming data
 samplenames <- colnames(data$counts)
-sampleanno <- data.frame("sampleID"=samplenames, "group"=factors[[1]])
+sampleanno <- data.frame("sampleID"=samplenames, factors)
 
 # Generating the DGEList object "data"
 data$samples <- sampleanno
@@ -137,10 +143,6 @@ data$samples$lib.size <- colSums(data$counts)
 data$samples$norm.factors <- 1
 row.names(data$samples) <- colnames(data$counts)
 data <- new("DGEList", data)
-
-# Calculating normalising factor, estimating dispersion
-data <- calcNormFactors(data, method=normOpt)
-data <- estimateDisp(data, robust=TRUE)
 
 # Generating design information
 pasteListName <- function(string){
@@ -157,6 +159,10 @@ for (i in 1:length(factorList)){
   colnames(design) <- gsub(factorList[i], "", colnames(design), fixed=TRUE)
 }
 
+# Calculating normalising factor, estimating dispersion
+data <- calcNormFactors(data, method=normOpt)
+#data <- estimateDisp(data, design=design, robust=TRUE)
+
 # Generate contrasts information
 contrasts <- makeContrasts(contrasts=contrastData, levels=design)
 
@@ -164,20 +170,28 @@ contrasts <- makeContrasts(contrasts=contrastData, levels=design)
 ### Data Output
 ################################################################################
 
-# Opening connection to output file
-png(bcvOut, width=600, height=600)
-plotBCV(data, main="BCV Plot")
-imageData[1, ] <- c("BCV Plot", "bcvplot.png")
-invisible(dev.off())
+# BCV Plot
+#png(bcvOutPng, width=600, height=600)
+#plotBCV(data, main="BCV Plot")
+#imageData[1, ] <- c("BCV Plot", "bcvplot.png")
+#invisible(dev.off())
+
+#pdf(bcvOutPdf)
+#plotBCV(data, main="BCV Plot")
+#invisible(dev.off())
 
 # Generate voom data and Mean-variance plot
-png(voomOut, width=600, height=600)
+png(voomOutPng, width=600, height=600)
 vData <- voom(data, design = design, plot=TRUE)
-imageData <- rbind(imageData, c("Voom Plot", "voomplot.png"))
+imageData[1, ] <- c("Voom Plot", "voomplot.png")
+invisible(dev.off())
+
+pdf(voomOutPdf)
+vData <- voom(data, design = design, plot=TRUE)
+linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
 invisible(dev.off())
 
 for (i in 1:length(contrastData)){
-  png(maOutPng[i], height=600, width=600)
   if (wantWeight){
     # Generating weights
     aw <- arrayWeights(vData, design)
@@ -187,74 +201,61 @@ for (i in 1:length(contrastData)){
     voomFit <- lmFit(vData, design, weights=wts)
     voomFit <- contrasts.fit(voomFit, contrasts)
     voomFit <- eBayes(voomFit)
-    top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
-    write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
-    
-    linkName <- paste0("Top Expressions Table(", contrastData[i],
-                       ") (.tsv)")
-    linkAddr <- paste0("toptab(", contrastData[i], ").tsv")
-    if (nrow(linkData)==0){
-      linkData[1, ] <- c(linkName, linkAddr)
-    } else {
-      linkData <- rbind(linkData, c(linkName, linkAddr))
-    }
-    
-    # Plot MA (log ratios vs mean average) using limma package on weighted data
+
     status = decideTests(voomFit[, i])
-    
-    limma::plotMA(voomFit, status=status, array=i,
-                  main=paste("MA Plot:", contrastData[i]), 
-                  col=c("black","firebrick","green"),
-                  xlab="Average Expression", ylab="logFC")
-    abline(h=0, col="grey", lty=2)
-    
-    imgName <- paste0("MA Plot(", contrastData[i], ")")
-    imgAddr <- paste0("maplot(", contrastData[i], ").png")
-    imageData <- rbind(imageData, c(imgName, imgAddr))
     
     #print(summary(status))
   } else {
     # Generating fit data and top table without weights
-    voomFitNoWeights <- lmFit(vData, design)
-    voomFitNoWeights <- contrasts.fit(voomFitNoWeights, contrasts)
-    voomFitNoWeights <- eBayes(voomFitNoWeights)
-    topNoWeights <- topTable(voomFitNoWeights, coef=i, number=Inf, sort.by="P")
-    write.table(topNoWeights, file=topOut[i], row.names=FALSE, sep="\t")
-    
-    linkName <- paste0("Top Expressions Table(", 
-                       contrastData[i], ") (.tsv)")
-    linkAddr <- paste0("toptab(", contrastData[i], ").tsv")
-    if (nrow(linkData)==0){
-      linkData[1, ] <- c(linkName, linkAddr)
-    } else {
-      linkData <- rbind(linkData, c(linkName, linkAddr))
-    }    
-    # Plot MA (log ratios vs mean average) using limma package on unweighted 
-    # data
-    status = decideTests(voomFitNoWeights[, i])
-    
-    limma::plotMA(voomFitNoWeights, status=status, array=i,
-                  main=paste("MA Plot:", contrastData[i]), 
-                  col=c("black","firebrick","green"),
-                  xlab="Average Expression", ylab="logFC")
-    abline(h=0, col="grey", lty=2)
-    
-    imgName <- paste0("MA Plot(", contrastData[i], ")")
-    imgAddr <- paste0("maplot(", contrastData[i], ").png")
-    imageData <- rbind(imageData, c(imgName, imgAddr))
-    
+    voomFit <- lmFit(vData, design)
+    voomFit <- contrasts.fit(voomFit, contrasts)
+    voomFit <- eBayes(voomFit)
+
+    status = decideTests(voomFit[, i])
     #print(summary(status))
   }
+  top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
+  write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
+  
+  linkName <- paste0("Top Expressions Table(", contrastData[i], ") (.tsv)")
+  linkAddr <- paste0("toptab(", contrastData[i], ").tsv")
+  linkData <- rbind(linkData, c(linkName, linkAddr))
+  
+  # Plot MA (log ratios vs mean average) using limma package on weighted data
+  pdf(maOutPdf[i])
+  limma::plotMA(voomFit, status=status, array=i,
+                main=paste("MA Plot:", contrastData[i]), 
+                col=c("black","firebrick","green"), value=c("0", "-1", "1"),
+                xlab="Average Expression", ylab="logFC")
+  
+  abline(h=0, col="grey", lty=2)
+  
+  linkName <- paste0("MA Plot(", contrastData[i], ")", " (.pdf)")
+  linkAddr <- paste0("maplot(", contrastData[i], ").pdf")
+  linkData <- rbind(linkData, c(linkName, linkAddr))
+  invisible(dev.off())
+  
+  png(maOutPng[i], height=600, width=600)
+  limma::plotMA(voomFit, status=status, array=i,
+                main=paste("MA Plot:", contrastData[i]), 
+                col=c("black","firebrick","green"), value=c("0", "-1", "1"),
+                xlab="Average Expression", ylab="logFC")
+  
+  abline(h=0, col="grey", lty=2)
+  
+  imgName <- paste0("MA Plot(", contrastData[i], ")")
+  imgAddr <- paste0("maplot(", contrastData[i], ").png")
+  imageData <- rbind(imageData, c(imgName, imgAddr))
   invisible(dev.off())
 }
 
+# Save relevant items as rda object
 if (wantRda){
   if (wantWeight){
-    save(data, vData, labels, factors, wts, voomFit, top,
+    save(data, vData, labels, factors, wts, voomFit, top, contrasts,
          file=rdaOut, ascii=TRUE)
   } else {
-    save(data, vData, labels, factors, voomFitNoWeights, 
-         topNoWeights, 
+    save(data, vData, labels, factors, voomFit, top, contrasts,
          file=rdaOut, ascii=TRUE)
   }
   linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
@@ -301,20 +302,21 @@ HtmlImage <- function(source, label=source, height=600, width=600){
   cata("\" width=\"", width, "\"/>\n")
 }
 
-ListItem <- function(item){
-  cata("<li>", item, "</li>\n")
+ListItem <- function(...){
+  cata("<li>", ..., "</li>\n")
 }
 
 cata("<html>\n")
 HtmlHead("EdgeR Output")
 cata("<body>\n")
 cata("<h3>EdgeR Analysis Output:</h3>\n")
-
+cata("All images displayed have PDF copy at the bottom of the page, these can ")
+cata("exported in a pdf viewer to high resolution image format.\n")
 for (i in 1:nrow(imageData)){
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
 
-cata("<h4>Top Expressions Table(s):</h4>\n")
+cata("<h4>Additional Output:</h4>\n")
 
 for (i in 1:nrow(linkData)){
   HtmlLink(linkData$Link[i], linkData$Label[i])
@@ -327,13 +329,77 @@ cata("or other spreadsheet programs</p>\n")
 
 cata("<h4>Extra Information</h4>\n")
 cata("<ul>\n")
-if(wantWeight){
-  ListItem("Weights were applied to samples")
-} else {
-  ListItem("Weights were not applied to samples")
+if(cpmReq!=0 && sampleReq!=0){
+  filterString <- paste("All genes that do not have more than", cpmReq,
+                        "CPM in at least", sampleReq, "samples are considered",
+                        "unexpressed and filtered out before analysis.")
+  ListItem(filterString)
 }
-cata("<li>", "Experiment was analysed using ", ncol(factors), " factor(s): ")
-cata(names(factors), sep=", ", "</li>\n")
+ListItem(normOpt, " was the method used to normalise library sizes.")
+if(wantWeight){
+  ListItem("Weights were applied to samples.")
+} else {
+  ListItem("Weights were not applied to samples.")
+}
+#cata("<li>", "Experiment was analysed using ", ncol(factors), " factor(s): ")
+#cata(names(factors), sep=", ", "</li>\n")
+cata("</ul>\n")
+
+cit <- character()
+link <- character()
+link[1] <- paste0("<a href=\"",
+                  "http://www.bioconductor.org/packages/release/bioc/",
+                  "vignettes/limma/inst/doc/usersguide.pdf",
+                  "\">", "limma User's Guide", "</a>.")
+                 
+link[2] <- paste0("<a href=\"",
+                  "http://www.bioconductor.org/packages/release/bioc/",
+                  "vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf",
+                  "\">", "edgeR User's Guide", "</a>")
+
+cit[1] <- paste("Please cite the paper below for the limma software itself.",
+                "Please also try to cite the appropriate methodology articles",
+                "that describe the statistical methods implemented in limma,",
+                "depending on which limma functions you are using. The",
+                "methodology articles are listed in Section 2.1 of the",
+                link[1])
+cit[2] <- paste("Smyth, GK (2005). Limma: linear models for microarray data.",
+                "In: 'Bioinformatics and Computational Biology Solutions using",
+                "R and Bioconductor'. R. Gentleman, V. Carey, S. doit,.",
+                "Irizarry, W. Huber (eds), Springer, New York, pages 397-420.")
+cit[3] <- paste("Please cite the first paper for the software itself and the",
+                "other papers for the various original statistical methods",
+                "implemented in edgeR.  See Section 1.2 in the", link[2],
+                "for more detail.")
+cit[4] <- paste("Robinson MD, McCarthy DJ and Smyth GK (2010). edgeR: a",
+                "Bioconductor package for differential expression analysis",
+                "of digital gene expression data. Bioinformatics 26, 139-140")
+cit[5] <- paste("Robinson MD and Smyth GK (2007). Moderated statistical tests",
+                "for assessing differences in tag abundance. Bioinformatics",
+                "23, 2881-2887")
+cit[6] <- paste("Robinson MD and Smyth GK (2008). Small-sample estimation of",
+                "negative binomial dispersion, with applications to SAGE data.",
+                "Biostatistics, 9, 321-332")
+cit[7] <- paste("McCarthy DJ, Chen Y and Smyth GK (2012). Differential",
+                "expression analysis of multifactor RNA-Seq experiments with",
+                "respect to biological variation. Nucleic Acids Research 40,",
+                "4288-4297")
+
+cata("<h3>Citations</h3>\n")
+
+cata("<h4>limma</h4>\n")
+cata(cit[1])
+cata("<ul>\n")
+ListItem(cit[2])
+cata("</ul>\n")
+
+cata("<h4>edgeR</h4>\n")
+cata(cit[3])
+cata("<ul>\n")
+ListItem(cit[4])
+ListItem(cit[5])
+ListItem(cit[6])
+ListItem(cit[7])
 cata("</ul>\n")
 
 cata("</body>\n")
