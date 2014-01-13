@@ -2,16 +2,17 @@
 # outputs a table of top expressions as well as various plots for differential
 # expression analysis
 #
-# ARGS: countPath       -Path to RData input containing counts
-#       annoPath        -Path to RData input containing gene annotations
-#       htmlPath        -Path to html file linking to other outputs
-#       outPath         -Path to folder to write all output to
-#       normOpt         -String specifying type of normalisation used
-#       weightOpt       -String specifying usage of weights
-#       contrastData    -String containing contrasts of interest
-#       cpmReq          -Float specifying cpm requirement
-#       sampleReq       -Integer specifying cpm requirement
-#       factorData      -String containing factor names and levels
+# ARGS: 1.countPath       -Path to RData input containing counts
+#       2.annoPath        -Path to RData input containing gene annotations
+#       3.htmlPath        -Path to html file linking to other outputs
+#       4.outPath         -Path to folder to write all output to
+#       5.rdaOpt          -String specifying if RData should be saved
+#       6.normOpt         -String specifying type of normalisation used
+#       7.weightOpt       -String specifying usage of weights
+#       8.contrastData    -String containing contrasts of interest
+#       9.cpmReq          -Float specifying cpm requirement
+#       10.sampleReq      -Integer specifying cpm requirement
+#       11.factorData     -String containing factor names and levels
 #
 # OUT:  Voom Plot
 #       BCV Plot
@@ -82,7 +83,7 @@ factors <- data.frame(factorData)
 # Split up contrasts seperated by comma into a vector
 contrastData <- unlist(strsplit(contrastData, split=","))
 
-# Generate output paths
+# Generate output folder and paths
 dir.create(outPath)
 makeOut <- function(filename){
   return(paste0(outPath, "/", filename))
@@ -91,7 +92,7 @@ makeOut <- function(filename){
 bcvOutPdf <- makeOut("bcvplot.pdf")
 bcvOutPng <- makeOut("bcvplot.png")
 voomOutPdf <- makeOut("voomplot.pdf")
-voomOutPng <- makeOut("voomplot.png")
+voomOutPng <- makeOut("voomplot.png") 
 maOutPdf <- character()   # Initialise character vector
 maOutPng <- character()
 topOut <- character()
@@ -99,16 +100,17 @@ for (i in 1:length(contrastData)){
   maOutPdf[i] <- makeOut(paste0("maplot(", contrastData[i], ").pdf"))
   maOutPng[i] <- makeOut(paste0("maplot(", contrastData[i], ").png"))
   topOut[i] <- makeOut(paste0("toptab(", contrastData[i], ").tsv"))
-}
+}                         # Save output paths for each contrast as vectors
 rdaOut <- makeOut("objectDump.rda")
 
-# Initiate data for html links
+# Initialise data for html links and images, data frame with columns Label and 
+# Link
 linkData <- data.frame(Label=character(), Link=character(),
                        stringsAsFactors=FALSE)
 imageData <- data.frame(Label=character(), Link=character(),
                         stringsAsFactors=FALSE)
 
-# Read in data
+# Read in counts and geneanno data
 counts <- read.table(countPath)
 if (haveAnno){
   geneanno <- read.table(annoPath)
@@ -166,6 +168,9 @@ data <- calcNormFactors(data, method=normOpt)
 # Generate contrasts information
 contrasts <- makeContrasts(contrasts=contrastData, levels=design)
 
+# Name rows of factors according to their sample
+row.names(factors) <- names(data$counts)
+
 ################################################################################
 ### Data Output
 ################################################################################
@@ -180,40 +185,54 @@ contrasts <- makeContrasts(contrasts=contrastData, levels=design)
 #plotBCV(data, main="BCV Plot")
 #invisible(dev.off())
 
-# Generate voom data and Mean-variance plot
-png(voomOutPng, width=600, height=600)
-vData <- voom(data, design = design, plot=TRUE)
-imageData[1, ] <- c("Voom Plot", "voomplot.png")
-invisible(dev.off())
-
-pdf(voomOutPdf)
-vData <- voom(data, design = design, plot=TRUE)
-linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
-invisible(dev.off())
 
 for (i in 1:length(contrastData)){
   if (wantWeight){
     # Generating weights
+    vData <- voom(data, design = design)
     aw <- arrayWeights(vData, design)
-    wts <- asMatrixWeights(aw, dim(vData)) * vData$w
+    
+    # Creating voom data object and plot
+    png(voomOutPng, width=600, height=600)
+    vData <- voom(data, design=design, weights=aw, plot=TRUE)
+    imageData[1, ] <- c("Voom Plot", "voomplot.png")
+    invisible(dev.off())
+    
+    pdf(voomOutPdf)
+    vData <- voom(data, design=design, weights=aw, plot=TRUE)
+    linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
+    invisible(dev.off())
     
     # Generating fit data and top table with weights
+    wts <- asMatrixWeights(aw, dim(vData)) * vData$w
     voomFit <- lmFit(vData, design, weights=wts)
-    voomFit <- contrasts.fit(voomFit, contrasts)
-    voomFit <- eBayes(voomFit)
-
-    status = decideTests(voomFit[, i])
+    
     
     #print(summary(status))
   } else {
-    # Generating fit data and top table without weights
+    # Creating voom data object and plot
+    png(voomOutPng, width=600, height=600)
+    vData <- voom(data, design=design, plot=TRUE)
+    imageData[1, ] <- c("Voom Plot", "voomplot.png")
+    invisible(dev.off())
+    
+    pdf(voomOutPdf)
+    vData <- voom(data, design=design, plot=TRUE)
+    linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
+    invisible(dev.off())
+    
+    # Generate voom fit
     voomFit <- lmFit(vData, design)
-    voomFit <- contrasts.fit(voomFit, contrasts)
-    voomFit <- eBayes(voomFit)
-
-    status = decideTests(voomFit[, i])
-    #print(summary(status))
+    
   }
+  
+  # Fit linear model and estimate dispersion with eBayes
+  voomFit <- contrasts.fit(voomFit, contrasts)
+  voomFit <- eBayes(voomFit)
+  
+  status = decideTests(voomFit[, i])
+  
+  # Write top expressions table
   top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
   write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
   
@@ -252,10 +271,10 @@ for (i in 1:length(contrastData)){
 # Save relevant items as rda object
 if (wantRda){
   if (wantWeight){
-    save(data, vData, labels, factors, wts, voomFit, top, contrasts,
+    save(data, vData, labels, factors, wts, voomFit, top, contrasts, design,
          file=rdaOut, ascii=TRUE)
   } else {
-    save(data, vData, labels, factors, voomFit, top, contrasts,
+    save(data, vData, labels, factors, voomFit, top, contrasts, design,
          file=rdaOut, ascii=TRUE)
   }
   linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
@@ -287,23 +306,35 @@ cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL,
   .Internal(cat(list(...), file, sep, fill, labels, append))
 }
 
+# Function to write code for html head and title
 HtmlHead <- function(title){
   cata("<head>\n")
   cata("<title>", title, "</title>\n")
   cata("</head>\n")
 }
 
+# Function to write code for html links
 HtmlLink <- function(address, label=address){
   cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
 }
 
+# Function to write code for html images
 HtmlImage <- function(source, label=source, height=600, width=600){
   cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
   cata("\" width=\"", width, "\"/>\n")
 }
 
+# Function to write code for html list items
 ListItem <- function(...){
   cata("<li>", ..., "</li>\n")
+}
+
+TableItem <- function(...){
+  cata("<td>", ..., "</td>\n")
+}
+
+TableHeadItem <- function(...){
+  cata("<th>", ..., "</th>\n")
 }
 
 cata("<html>\n")
@@ -311,7 +342,7 @@ HtmlHead("EdgeR Output")
 cata("<body>\n")
 cata("<h3>EdgeR Analysis Output:</h3>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format.\n")
+cata("exported in a pdf viewer to high resolution image format. <br/>\n")
 for (i in 1:nrow(imageData)){
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
@@ -330,9 +361,9 @@ cata("or other spreadsheet programs</p>\n")
 cata("<h4>Extra Information</h4>\n")
 cata("<ul>\n")
 if(cpmReq!=0 && sampleReq!=0){
-  filterString <- paste("All genes that do not have more than", cpmReq,
+  filterString <- paste("Genes that do not have more than", cpmReq,
                         "CPM in at least", sampleReq, "samples are considered",
-                        "unexpressed and filtered out before analysis.")
+                        "unexpressed and filtered out.")
   ListItem(filterString)
 }
 ListItem(normOpt, " was the method used to normalise library sizes.")
@@ -345,13 +376,33 @@ if(wantWeight){
 #cata(names(factors), sep=", ", "</li>\n")
 cata("</ul>\n")
 
+cata("<h4>Summary of experimental data</h4>\n")
+
+cata("<table border=\"1\">\n")
+cata("<tr>\n")
+TableItem()
+for (i in names(factors)){
+  TableHeadItem(i)
+}
+cata("</tr>\n")
+
+for (i in 1:nrow(factors)){
+  cata("<tr>\n")
+  TableHeadItem(row.names(factors)[i])
+  for (j in ncol(factors)){
+    TableItem(as.character(factors[i, j]))
+  }
+  cata("</tr>\n")
+}
+cata("</table>")
+
 cit <- character()
 link <- character()
 link[1] <- paste0("<a href=\"",
                   "http://www.bioconductor.org/packages/release/bioc/",
                   "vignettes/limma/inst/doc/usersguide.pdf",
                   "\">", "limma User's Guide", "</a>.")
-                 
+
 link[2] <- paste0("<a href=\"",
                   "http://www.bioconductor.org/packages/release/bioc/",
                   "vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf",

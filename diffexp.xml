@@ -147,7 +147,9 @@ server running this tool.
 A matrix of expression level with rows corresponding to particular genes
 and columns corresponding to the feature count in particular samples.
 Values must be tab separated and there must be a row for the sample/column
-labels and a column for the row/gene labels.::
+labels and a column for the row/gene labels.
+
+Example::
 
 	"Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
 	"27395"	1699	1528	1463	1441	1495
@@ -171,6 +173,17 @@ data.
 Optional input for gene annotations, this can contain more
 information about the genes than just an ID number. The annotations will
 be avaiable in the top expressions table.
+
+Example::
+
+	"GeneID"	"Length"	"EntrezID"	"Symbols"	"GeneName"	"Chr"
+	"11287"	"11287"	4681	"11287"	"Pzp"	"pregnancy zone protein"	"6"
+	"11298"	"11298"	1455	"11298"	"Aanat"	"arylalkylamine N-acetyltransferase"	"11"
+	"11302"	"11302"	5743	"11302"	"Aatk"	"apoptosis-associated tyrosine kinase"	"11"
+	"11303"	"11303"	10260	"11303"	"Abca1"	"ATP-binding cassette, sub-family A (ABC1), member 1"	"4"
+	"11304"	"11304"	7248	"11304"	"Abca4"	"ATP-binding cassette, sub-family A (ABC1), member 4"	"3"
+	"11305"	"11305"	8061	"11305"	"Abca2"	"ATP-binding cassette, sub-family A (ABC1), member 2"	"2"
+	...
 
 **Factor Name:**
 The name of the factor being investigated. This tool currently assumes
@@ -221,7 +234,8 @@ manual.
 **Apply Sample Weights:**
 Option to downweight outlier samples such that their information is still
 used in the statistical analysis but their impact is reduced. Use this
-whenever severe outliers are present.
+whenever significant outliers are present. The MDS plotting tool in this package
+is useful for identifying outliers
 
 **Citations:**
 
