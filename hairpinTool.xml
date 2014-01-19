@@ -1,0 +1,127 @@
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.1">
+  <description>
+  </description>
+    
+  <requirements>
+    <requirement type="R-module">edgeR</requirement>
+    <requirement type="R-module">limma</requirement>
+  </requirements>
+  
+  <stdio>
+    <exit_code range="1" level="fatal" description="Unexpected Eror" />
+  </stdio>
+  
+  <command interpreter="RScript">
+  hairpintool.R $hairpin $samples $fastq 
+                
+                #if $positions.option=="yes":
+                $positions.barstart $positions.barend
+                $positions.hpstart $positions.hpend 
+                #else
+                1 5 37 57
+                #end if
+          
+                #if $filterCPM.option=="yes":
+                $filterCPM.cpmReq $filterCPM.sampleReq
+                #else
+                0 0
+                #end if
+          
+                $fdr $workMode.mode
+          
+                #if $workMode.mode=="classic":
+                "$workMode.pair1" "$workMode.pair2"
+                #else
+                "$workMode.contrast" 0
+                #end if
+          
+                $outFile $outFile.files_path
+  </command>
+  
+  <inputs>
+    <param name="hairpin" type="data" format="tabular" 
+           label="Hairpin Data"/>
+    
+    <param name="samples" type="data" format="tabular" 
+           label="Samples Information"/>
+           
+    <param name="fastq" type="data" format="fastq"
+           label="fastq File"/>
+    
+    <conditional name="positions">
+      <param name="option" type="select" 
+             label="Specify Barcode and Hairpin Locations?">
+        <option value="no" selected="True">No</option>
+        <option value="yes">Yes</option>
+      </param>
+      
+      <when value="yes">
+        <param name="barstart" type="integer" value="1"
+               label="Barcode Starting Position"/>
+        <param name="barend" type="integer" value="5"
+               label="Barcode Ending Position"/>
+        
+        <param name="hpstart" type="integer" value="37"
+               label="Hairpin Starting Position"/>
+           
+        <param name="hpend" type="integer" value="57"
+               label="Hairpin Ending Position"/>
+      </when>
+      
+      <when value="no"/>
+    </conditional>
+    
+    <conditional name="filterCPM">
+      <param name="option" type="select" label="Filter Low CPM?"
+       help="Treat hairpins with very low expression as unexpressed and 
+       			 filter out to speed up computation">
+        <option value="no" selected="True">No</option>
+        <option value="yes">Yes</option>
+      </param>
+      
+        <when value="yes">
+          <param name="cpmReq" type="float" value="0.5" min="0" max="1"
+                 label="Minimum CPM"/>
+                 
+          <param name="sampleReq" type="integer" value="3" min="0"
+                 label="Minimum Samples" 
+                 help="Filter out all the genes that do not meet the minimum 
+                       CPM in at least this many samples"/>
+        </when>
+        
+        <when value="no"/>
+        
+    </conditional>
+    
+    <conditional name="workMode">
+      <param name="mode" type="select" label="Analysis Type">
+        <option value="classic">Classic Exact Test</option>
+        <option value="glm">Trendy New GLM</option>
+      </param>
+      
+      <when value="classic">
+        <param name="pair1" type="text" label="Compare"/>
+        <param name="pair2" type="text" label="To"/>
+      </when>
+      
+      <when value="glm">
+        <param name="contrast" type="text" size="30"
+               label="Contrasts of interest (No spaces)"
+               help="Eg. Mut-WT,KD-Control"/>
+      </when>
+    </conditional>
+    
+    <param name="fdr" type="float" value="0.05" min="0" max="1"
+           label="FDR Threshold"
+           help="All observations below this threshold will be highlighted
+                 in the smear plot"/>
+  </inputs>
+
+  <outputs>
+    <data format="html" name="outFile" label="shRNAseq Analysis"/>
+  </outputs>
+  
+  <help>
+  </help>
+</tool>
+  

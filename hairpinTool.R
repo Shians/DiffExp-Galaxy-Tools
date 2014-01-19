@@ -1,0 +1,330 @@
+################################################################################
+### Input Processing
+################################################################################
+
+# Loading and checking required packages
+library(methods, quietly=TRUE, warn.conflicts=FALSE)
+library(statmod, quietly=TRUE, warn.conflicts=FALSE)
+library(splines, quietly=TRUE, warn.conflicts=FALSE)
+library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
+library(limma, quietly=TRUE, warn.conflicts=FALSE)
+
+if(packageVersion("edgeR") < "3.5.24"){
+  message("Please update 'edgeR' to version >= 3.5.24 to run this code")
+}
+
+# Grabbing and processing command line
+argv <- commandArgs(TRUE)
+
+hairpinPath <- as.character(argv[1])
+samplePath <- as.character(argv[2])
+fastqPath <- as.character(argv[3])
+barStart <- as.numeric(argv[4])
+barEnd <- as.numeric(argv[5])
+hpStart <- as.numeric(argv[6])
+hpEnd <- as.numeric(argv[7])
+cpmReq <- as.numeric(argv[8])
+sampleReq <- as.numeric(argv[9])
+fdrThresh <- as.numeric(argv[10])
+workMode <- as.character(argv[11])
+if(workMode=="classic"){
+  pairData <- character()
+  pairData[2] <- as.character(argv[12])
+  pairData[1] <- as.character(argv[13])
+} else if (workMode=="glm"){
+  contrastData <- as.character(argv[12])
+}
+htmlPath <- as.character(argv[14])
+folderPath <- as.character(argv[15])
+
+# Check if grouping variable has been specified
+sampleData <- read.table(samplePath, sep="\t", header=TRUE)
+if(!any(grepl("group", names(sampleData)))){
+  stop("'group' column not specified in sample annotation file")
+}
+
+# Split up contrasts seperated by comma into a vector and replace spaces with
+# periods
+if(exists("contrastData")){
+  contrastData <- unlist(strsplit(contrastData, split=","))
+  contrastData <- gsub(" ", ".", contrastData, fixed=TRUE)
+}
+# Generate output folder and paths
+dir.create(folderPath)
+
+# Function has string input and generates an output path string
+makeOut <- function(filename){
+  return(paste0(folderPath, "/", filename))
+}
+
+# Function has string input and generates both a pdf and png output strings
+imgOut <- function(filename){
+  assign(paste0(filename, "Png"), makeOut(paste0(filename,".png")), 
+         envir = .GlobalEnv)
+  assign(paste0(filename, "Pdf"), makeOut(paste0(filename,".pdf")),
+         envir = .GlobalEnv)
+}
+
+imgOut("barHairpin")
+imgOut("barIndex")
+imgOut("mds")
+imgOut("bcv")
+if (workMode == "classic"){
+  imgOut("smear")
+  topOut <- makeOut("toptag.tsv")
+} else {
+  smearPng <- character()
+  smearPdf <- character()
+  topOut <- character()
+  for (i in 1:length(contrastData)){
+    smearPng[i] <- makeOut(paste0("smear(", contrastData[i], ").png"))
+    smearPdf[i] <- makeOut(paste0("smear(", contrastData[i], ").pdf"))
+    topOut[i] <- makeOut(paste0("toptag(", contrastData[i], ").tsv"))
+  }
+}
+# Initialise data for html links and images, table with the link label and
+# link address
+linkData <- data.frame(Label=character(), Link=character(),
+                       stringsAsFactors=FALSE)
+imageData <- data.frame(Label=character(), Link=character(),
+                        stringsAsFactors=FALSE)
+
+################################################################################
+### Data Processing
+################################################################################
+
+# Use EdgeR hairpin process and capture outputs
+hpReadout <- capture.output(
+  data <- processHairpinReads(fastqPath, samplePath, hairpinPath,
+                              hairpinStart=hpStart, hairpinEnd=hpEnd, 
+                              verbose=TRUE)
+)
+closeAllConnections()
+hpReadout <- hpReadout[!grepl("million", hpReadout)]
+hpReadout <- hpReadout[hpReadout!=""]
+hpReadout <- hpReadout[-(3:4)]
+hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
+
+
+# Make the names of groups syntactically valid (replace spaces with periods)
+data$samples$group<-make.names(data$samples$group)
+if (exists("pairData")){
+  pairData <- make.names(pairData)
+}
+
+# Filter hairpins with low counts
+sel <- rowSums(cpm(data$counts)>cpmReq)>=sampleReq
+data <- data[sel, ]
+
+# Begin differential representation analysis
+# Estimate dispersions
+data <- estimateDisp(data)
+#sqrt(data$common.dispersion)
+
+
+# Plot number of hairpins that could be matched per sample
+png(barIndexPng, width=600, height=600)
+barplot(height<-colSums(data$counts), las=2, main="Counts per index", 
+        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+imageData[1, ] <- c("Counts per Index", "barIndex.png")
+invisible(dev.off())
+
+pdf(barIndexPdf)
+barplot(height<-colSums(data$counts), las=2, main="Counts per index", 
+        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+linkData[1, ] <- c("Counts per Index Barplot (.pdf)", "barIndex.pdf")
+invisible(dev.off())
+
+# Plot per hairpin totals across all samples
+png(barHairpinPng, width=600, height=600)
+barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+imageData <- rbind(imageData, c("Counts per Hairpin", "barHairpin.png"))
+invisible(dev.off())
+
+pdf(barHairpinPdf)
+barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+newEntry <- c("Counts per Hairpin Barplot (.pdf)", "barHairpin.pdf")
+linkData <- rbind(linkData, newEntry)
+invisible(dev.off())
+
+# Make an MDS plot to visualise relationships between replicate samples
+png(mdsPng, width=600, height=600)
+plotMDS(data, labels=data$samples$group, col=as.numeric(data$samples$group),
+        main="MDS Plot")
+imageData <- rbind(imageData, c("MDS Plot", "mds.png"))
+invisible(dev.off())
+
+pdf(mdsPdf)
+plotMDS(data, labels=data$samples$group, col=as.numeric(data$samples$group),
+        main="MDS Plot")
+newEntry <- c("MDS Plot (.pdf)", "mds.pdf")
+linkData <- rbind(linkData, newEntry)
+invisible(dev.off())
+
+if (workMode=="classic"){
+  # Assess differential representation using classic exact testing methodology 
+  # in edgeR
+  testData <- exactTest(data, pair=pairData)
+  
+  top <- topTags(testData, n=Inf)
+  topIDs <- top$table[top$table$FDR < fdrThresh, 1]
+  write.table(top, file=topOut, row.names=FALSE, sep="\t")
+  linkData <- rbind(linkData, c("Top Tags (.tsv)", "toptag.tsv"))
+  
+  # Select hairpins with FDR < 0.05 to highlight on plot
+  png(smearPng, width=600, height=600)
+  plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+            pch=20, cex=0.5, main="Small screen: logFC vs logCPM")
+  abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+  imageData <- rbind(imageData, c("Smear Plot", "smear.png"))
+  invisible(dev.off())
+  
+  pdf(smearPdf)
+  plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+            pch=20, cex=0.5, main="Small screen: logFC vs logCPM")
+  abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+  newEntry <- c("SmearPlot (.pdf)", "smear.pdf")
+  linkData <- rbind(linkData, newEntry)
+  invisible(dev.off())
+} else if (workMode=="glm"){
+  # Generating design information
+  factors <- factor(data$sample$group)
+  design <- model.matrix(~0+factors)
+  
+  colnames(design) <- gsub("factors", "", colnames(design), fixed=TRUE)
+  
+  # Split up contrasts seperated by comma into a vector
+  contrastData <- unlist(strsplit(contrastData, split=","))
+  for (i in 1:length(contrastData)){
+    # Generate contrasts information
+    contrasts <- makeContrasts(contrasts=contrastData[i], levels=design)
+    
+    # Fit negative bionomial GLM
+    fit = glmFit(data, design)
+    # Carry out Likelihood ratio test
+    testData = glmLRT(fit, contrast=contrasts)
+    
+    # Select hairpins with FDR < 0.05 to highlight on plot
+    top <- topTags(testData, n=Inf)
+    topIDs <- top$table[top$table$FDR < fdrThresh, 1]
+    write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
+    
+    linkName <- paste0("Top Tags Table(", contrastData[i], ") (.tsv)")
+    linkAddr <- paste0("toptag(", contrastData[i], ").tsv")
+    linkData <- rbind(linkData, c(linkName, linkAddr))
+    
+    # Make a plot of logFC versus logCPM
+    png(smearPng[i], height=600, width=600)
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5,
+              main=paste("Smear Plot:", contrastData[i]))
+    abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+    
+    imgName <- paste0("Smear Plot(", contrastData[i], ")")
+    imgAddr <- paste0("smear(", contrastData[i], ").png")
+    imageData <- rbind(imageData, c(imgName, imgAddr))
+    invisible(dev.off())
+    
+    pdf(smearPdf[i])
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5,
+              main=paste("Smear Plot:", contrastData[i]))
+    abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+    
+    imgName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
+    imgAddr <- paste0("smear(", contrastData[i], ").pdf")
+    linkData <- rbind(linkData, c(imgName, imgAddr))
+    invisible(dev.off())
+  }
+}
+
+################################################################################
+### HTML Generation
+################################################################################
+# Clear file
+cat("", file=htmlPath)
+
+# Create cat function default path set, default seperator empty and appending
+# true by default (Ripped straight from the cat function with altered argument
+# defaults)
+cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
+                 append = TRUE){
+  if (is.character(file)) 
+    if (file == "") 
+      file <- stdout()
+  else if (substring(file, 1L, 1L) == "|") {
+    file <- pipe(substring(file, 2L), "w")
+    on.exit(close(file))
+  }
+  else {
+    file <- file(file, ifelse(append, "a", "w"))
+    on.exit(close(file))
+  }
+  .Internal(cat(list(...), file, sep, fill, labels, append))
+}
+
+# Function to write code for html head and title
+HtmlHead <- function(title){
+  cata("<head>\n")
+  cata("<title>", title, "</title>\n")
+  cata("</head>\n")
+}
+
+# Function to write code for html links
+HtmlLink <- function(address, label=address){
+  cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
+}
+
+# Function to write code for html images
+HtmlImage <- function(source, label=source, height=600, width=600){
+  cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
+  cata("\" width=\"", width, "\"/>\n")
+}
+
+# Function to write code for html list items
+ListItem <- function(...){
+  cata("<li>", ..., "</li>\n")
+}
+
+TableItem <- function(...){
+  cata("<td>", ..., "</td>\n")
+}
+
+TableHeadItem <- function(...){
+  cata("<th>", ..., "</th>\n")
+}
+
+cata("<html>\n")
+HtmlHead("EdgeR Output")
+
+cata("<body>\n")
+cata("<h3>EdgeR Analysis Output:</h3>\n")
+cata("All images displayed have PDF copy at the bottom of the page, these can ")
+cata("exported in a pdf viewer to high resolution image format. <br/>\n")
+for (i in 1:nrow(imageData)){
+  HtmlImage(imageData$Link[i], imageData$Label[i])
+}
+cata("<br/>\n")
+cata("<ul>\n")
+ListItem(hpReadout[1])
+ListItem(hpReadout[2])
+cata("</ul>\n")
+cata(hpReadout[3], "<br/>\n")
+cata("<ul>\n")
+ListItem(hpReadout[4])
+ListItem(hpReadout[7])
+cata("</ul>\n")
+cata(hpReadout[8:11], sep="<br/>\n")
+cata("<h4>Additional Output:</h4>\n")
+
+for (i in 1:nrow(linkData)){
+  HtmlLink(linkData$Link[i], linkData$Label[i])
+}
+cata("<p>alt-click any of the links to download the file, or click the name ")
+cata("of this task in the galaxy history panel and click on the floppy ")
+cata("disk icon to download all files in a zip file.</p>\n")
+cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
+cata("or other spreadsheet programs</p>\n")
+
+cata("</body>\n")
+cata("</html>")
