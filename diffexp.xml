@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.3">
+<tool id="diffexp" name="DiffExp" version="1.0.5">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -7,10 +7,12 @@
   <requirements>
     <requirement type="R-module">edgeR</requirement>
     <requirement type="R-module">limma</requirement>
-    <requirement type="R-module">statmod</requirement>
-    <requirement type="R-module">splines</requirement>
   </requirements>
 
+  <stdio>
+    <exit_code range="1" level="fatal" description="Unexpected Eror" />
+  </stdio>
+  
   <command interpreter="RScript">
     diffexp.R $counts 
               
@@ -30,6 +32,12 @@
               #else
                 0 0
               #end if                                         <!--10-->
+              
+              #if $testOpt.wantOpt=="yes":
+              	$testOpt.pAdjust $testOpt.pVal $testOpt.lfc
+              #else
+                BH 0.05 0
+              #end if
               
               <!--*Code commented until solution for multiple factors is found*
               #for $i, $fct in enumerate($factors):
@@ -80,14 +88,17 @@
            help="Eg. Mut-WT,KD-Control"/>
     
     <conditional name="filterCPM">
-      <param name="filterLowCPM" type="select" label="Filter Low CPM?">
+      <param name="filterLowCPM" type="select" label="Filter Low CPM?"
+       help="Treat genes with very low expression as unexpressed and 
+       			 filter out to speed up computation">
         <option value="yes" selected="True">Yes</option>
         <option value="no">No</option>
       </param>
       
         <when value="yes">
           <param name="cpmReq" type="float" value="0.5" min="0" max="1"
-                  label="Minimum CPM"/>
+                 label="Minimum CPM"/>
+                 
           <param name="sampleReq" type="integer" value="3" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
@@ -117,7 +128,34 @@
         
       </param>
     </conditional>
-    
+    			 
+    <conditional name="testOpt">
+      <param name="wantOpt" type="select" label="Use Advanced Testing Options?"
+       help="Enable choices for p-value adjustment method, p-value threshold
+             and log2-fold-change threshold">
+        <option value="no" selected="True">No</option>
+      	<option value="yes">Yes</option>
+      </param>
+      
+        <when value="yes">
+        	<param name="pAdjust" type="select" label="P-Value Adjustment Method">
+          	<option value="BH">Benjamini and Hochberg (1995)</option>
+            <option value="BY">Benjamini and Yekutieli (2001)</option>
+            <option value="holm">Holm (1979)</option>
+            <option value="none">None</option>
+          </param>
+          
+          <param name="pVal" type="float" value="0.05" min="0" max="1"
+    			 		   label="P-Value Threshold"/>
+    			 		   
+          <param name="lfc" type="float" value="0" min="0"
+          			 label="Minimum log2-fold-change Required"/>
+        </when>
+        
+        <when value="no"/>
+        
+    </conditional>
+
     <conditional name="wantRda">
       <param name="rdaOption" type="select" label="Output RData?"
              display="radio"

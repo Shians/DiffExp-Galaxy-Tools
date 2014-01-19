@@ -12,7 +12,7 @@
 #       8.contrastData    -String containing contrasts of interest
 #       9.cpmReq          -Float specifying cpm requirement
 #       10.sampleReq      -Integer specifying cpm requirement
-#       11.factorData     -String containing factor names and levels
+#       11.factorData     -String containing factor names and values
 #
 # OUT:  Voom Plot
 #       BCV Plot
@@ -27,14 +27,15 @@
 ### Input Processing
 ################################################################################
 
-# Collects arguments from command line
-argv <- commandArgs(TRUE)
-
 # Load all required libraries
-library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
-library(limma, quietly=TRUE, warn.conflicts=FALSE)
+library(methods, quietly=TRUE, warn.conflicts=FALSE)
 library(statmod, quietly=TRUE, warn.conflicts=FALSE)
 library(splines, quietly=TRUE, warn.conflicts=FALSE)
+library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
+library(limma, quietly=TRUE, warn.conflicts=FALSE)
+
+# Collects arguments from command line
+argv <- commandArgs(TRUE)
 
 # Grab arguments
 countPath <- as.character(argv[1])
@@ -47,11 +48,14 @@ weightOpt <- as.character(argv[7])
 contrastData <- as.character(argv[8])
 cpmReq <- as.numeric(argv[9])
 sampleReq <- as.numeric(argv[10])
+pAdjOpt <- as.character(argv[11])
+pValReq <- as.numeric(argv[12])
+lfcReq <- as.numeric(argv[13])
 factorData <- list()
-for (i in 11:length(argv)){
+for (i in 14:length(argv)){
   newFact <- unlist(strsplit(as.character(argv[i]), split="::"))
   factorData <- rbind(factorData, newFact)
-}
+} # Factors have the form: FACT_NAME::LEVEL,LEVEL,LEVEL,LEVEL,...
 
 # Process arguments
 if (weightOpt=="yes"){
@@ -200,15 +204,13 @@ for (i in 1:length(contrastData)){
     
     pdf(voomOutPdf)
     vData <- voom(data, design=design, weights=aw, plot=TRUE)
-    linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
+    linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
     invisible(dev.off())
     
     # Generating fit data and top table with weights
     wts <- asMatrixWeights(aw, dim(vData)) * vData$w
     voomFit <- lmFit(vData, design, weights=wts)
     
-    
-    #print(summary(status))
   } else {
     # Creating voom data object and plot
     png(voomOutPng, width=600, height=600)
@@ -218,7 +220,7 @@ for (i in 1:length(contrastData)){
     
     pdf(voomOutPdf)
     vData <- voom(data, design=design, plot=TRUE)
-    linkData[1, ] <- c("Voom Plot (.pdf)", voomOutPdf)
+    linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
     invisible(dev.off())
     
     # Generate voom fit
@@ -230,8 +232,10 @@ for (i in 1:length(contrastData)){
   voomFit <- contrasts.fit(voomFit, contrasts)
   voomFit <- eBayes(voomFit)
   
-  status = decideTests(voomFit[, i])
-  
+  status = decideTests(voomFit[, i], adjust.method=pAdjOpt, p.value=pValReq,
+                       lfc=lfcReq)
+  sumStatus <- summary(status)
+                       
   # Write top expressions table
   top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
   write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
@@ -244,7 +248,7 @@ for (i in 1:length(contrastData)){
   pdf(maOutPdf[i])
   limma::plotMA(voomFit, status=status, array=i,
                 main=paste("MA Plot:", contrastData[i]), 
-                col=c("black","firebrick","green"), value=c("0", "-1", "1"),
+                col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -257,7 +261,7 @@ for (i in 1:length(contrastData)){
   png(maOutPng[i], height=600, width=600)
   limma::plotMA(voomFit, status=status, array=i,
                 main=paste("MA Plot:", contrastData[i]), 
-                col=c("black","firebrick","green"), value=c("0", "-1", "1"),
+                col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -271,10 +275,11 @@ for (i in 1:length(contrastData)){
 # Save relevant items as rda object
 if (wantRda){
   if (wantWeight){
-    save(data, vData, labels, factors, wts, voomFit, top, contrasts, design,
+    save(data, status, vData, labels, factors, wts, voomFit, top, contrasts, 
+         design,
          file=rdaOut, ascii=TRUE)
   } else {
-    save(data, vData, labels, factors, voomFit, top, contrasts, design,
+    save(data, status, vData, labels, factors, voomFit, top, contrasts, design,
          file=rdaOut, ascii=TRUE)
   }
   linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
@@ -338,9 +343,10 @@ TableHeadItem <- function(...){
 }
 
 cata("<html>\n")
-HtmlHead("EdgeR Output")
+HtmlHead("Limma Output")
+
 cata("<body>\n")
-cata("<h3>EdgeR Analysis Output:</h3>\n")
+cata("<h3>Limma Analysis Output:</h3>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
 cata("exported in a pdf viewer to high resolution image format. <br/>\n")
 for (i in 1:nrow(imageData)){
@@ -361,10 +367,10 @@ cata("or other spreadsheet programs</p>\n")
 cata("<h4>Extra Information</h4>\n")
 cata("<ul>\n")
 if(cpmReq!=0 && sampleReq!=0){
-  filterString <- paste("Genes that do not have more than", cpmReq,
-                        "CPM in at least", sampleReq, "samples are considered",
-                        "unexpressed and filtered out.")
-  ListItem(filterString)
+  tempStr <- paste("Genes that do not have more than", cpmReq,
+                   "CPM in at least", sampleReq, "samples are considered",
+                   "unexpressed and filtered out.")
+  ListItem(tempStr)
 }
 ListItem(normOpt, " was the method used to normalise library sizes.")
 if(wantWeight){
@@ -372,8 +378,19 @@ if(wantWeight){
 } else {
   ListItem("Weights were not applied to samples.")
 }
-#cata("<li>", "Experiment was analysed using ", ncol(factors), " factor(s): ")
-#cata(names(factors), sep=", ", "</li>\n")
+if(pAdjOpt!="none"){
+  tempStr <- paste("MA-Plot highlighted genes are significant at adjusted ",
+                   "p-value of ", pValReq,"  by the ", pAdjOpt, 
+                   " method, and exhibit log2-fold-change of at least ", 
+                   lfcReq)
+  ListItem(tempStr)
+} else {
+  tempStr <- paste("MA-Plot highlighted genes are significant at p-value of ",
+                    pValReq," and exhibit log2-fold-change of at least ", 
+                    lfcReq)
+  ListItem(tempStr)
+}
+  
 cata("</ul>\n")
 
 cata("<h4>Summary of experimental data</h4>\n")
@@ -413,7 +430,8 @@ cit[1] <- paste("Please cite the paper below for the limma software itself.",
                 "that describe the statistical methods implemented in limma,",
                 "depending on which limma functions you are using. The",
                 "methodology articles are listed in Section 2.1 of the",
-                link[1])
+                link[1],
+                "Cite no. 3 only if sample weights were used.")
 cit[2] <- paste("Smyth, GK (2005). Limma: linear models for microarray data.",
                 "In: 'Bioinformatics and Computational Biology Solutions using",
                 "R and Bioconductor'. R. Gentleman, V. Carey, S. doit,.",
@@ -435,23 +453,33 @@ cit[7] <- paste("McCarthy DJ, Chen Y and Smyth GK (2012). Differential",
                 "expression analysis of multifactor RNA-Seq experiments with",
                 "respect to biological variation. Nucleic Acids Research 40,",
                 "4288-4297")
+cit[8] <- paste("Law, CW, Chen, Y, Shi, W, and Smyth, GK (2014). Voom:",
+                "precision weights unlock linear model analysis tools for",
+                "RNA-seq read counts. Genome Biology.", 
+                "(Accepted 9 January 2014)")
 
+cit[9] <- paste("Ritchie, M. E., Diyagama, D., Neilson, J., van Laar,", 
+                "R., Dobrovic, A., Holloway, A., and Smyth, G. K. (2006).",
+                "Empirical array quality weights for microarray data.",
+                "BMC Bioinformatics 7, Article 261.")
 cata("<h3>Citations</h3>\n")
 
 cata("<h4>limma</h4>\n")
-cata(cit[1])
-cata("<ul>\n")
+cata(cit[1], "\n")
+cata("<ol>\n")
 ListItem(cit[2])
-cata("</ul>\n")
+ListItem(cit[8])
+ListItem(cit[9])
+cata("</ol>\n")
 
 cata("<h4>edgeR</h4>\n")
-cata(cit[3])
-cata("<ul>\n")
+cata(cit[3], "\n")
+cata("<ol>\n")
 ListItem(cit[4])
 ListItem(cit[5])
 ListItem(cit[6])
 ListItem(cit[7])
-cata("</ul>\n")
+cata("</ol>\n")
 
 cata("</body>\n")
 cata("</html>")
