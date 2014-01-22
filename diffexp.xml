@@ -18,7 +18,7 @@
               
               #if $anno.annoOpt=="yes":
                 $geneanno 
-              #else
+              #else:
                 None
               #end if
               
@@ -29,13 +29,13 @@
               otherwise enter 0 0 as the options-->
               #if $filterCPM.filterLowCPM=="yes":
                 $filterCPM.cpmReq $filterCPM.sampleReq
-              #else
+              #else:
                 0 0
               #end if                                         <!--10-->
               
               #if $testOpt.wantOpt=="yes":
               	$testOpt.pAdjust $testOpt.pVal $testOpt.lfc
-              #else
+              #else:
                 BH 0.05 0
               #end if
               

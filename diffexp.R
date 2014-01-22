@@ -27,6 +27,9 @@
 ### Input Processing
 ################################################################################
 
+# Record starting time
+timeStart <- as.character(Sys.time())
+
 # Load all required libraries
 library(methods, quietly=TRUE, warn.conflicts=FALSE)
 library(statmod, quietly=TRUE, warn.conflicts=FALSE)
@@ -285,6 +288,9 @@ if (wantRda){
   linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
 }
 
+# Record ending time
+timeEnd <- as.character(Sys.time())
+
 ################################################################################
 ### HTML Generation
 ################################################################################
@@ -353,14 +359,23 @@ for (i in 1:nrow(imageData)){
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
 
-cata("<h4>Additional Output:</h4>\n")
-
+cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)){
-  HtmlLink(linkData$Link[i], linkData$Label[i])
+  if (!grepl(".tsv", linkData$Link[i])){
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
 }
+
+cata("<h4>Tables:</h4>\n")
+for (i in 1:nrow(linkData)){
+  if (grepl(".tsv", linkData$Link[i])){
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
+}
+
 cata("<p>alt-click any of the links to download the file, or click the name ")
 cata("of this task in the galaxy history panel and click on the floppy ")
-cata("disk icon to download all files in a zip file.</p>\n")
+cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
 
@@ -390,7 +405,7 @@ if(pAdjOpt!="none"){
                     lfcReq)
   ListItem(tempStr)
 }
-  
+
 cata("</ul>\n")
 
 cata("<h4>Summary of experimental data</h4>\n")
@@ -480,6 +495,14 @@ ListItem(cit[5])
 ListItem(cit[6])
 ListItem(cit[7])
 cata("</ol>\n")
+
+cata("<table border=\"0\">\n")
+cata("<tr>\n")
+TableItem("Task started at:"); TableItem(timeStart)
+cata("</tr>\n")
+cata("<tr>\n")
+TableItem("Task ended at:"); TableItem(timeEnd)
+cata("</tr>\n")
 
 cata("</body>\n")
 cata("</html>")
