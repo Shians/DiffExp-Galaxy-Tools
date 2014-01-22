@@ -1,5 +1,6 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.1">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.3">
   <description>
+    Analyse hairpin differential expression using edgeR
   </description>
     
   <requirements>
@@ -8,34 +9,45 @@
   </requirements>
   
   <stdio>
-    <exit_code range="1" level="fatal" description="Unexpected Eror" />
+    <exit_code range="1" level="fatal" description="Unexpected Error" />
   </stdio>
   
   <command interpreter="RScript">
-  hairpintool.R $hairpin $samples $fastq 
-                
+  hairpintool.R #for $i, $fas in enumerate($fastq):
+                  fastq::$fas.file
+                #end for
+  
+                $hairpin $samples 
+                  
                 #if $positions.option=="yes":
                 $positions.barstart $positions.barend
                 $positions.hpstart $positions.hpend 
-                #else
+                #else:
                 1 5 37 57
                 #end if
           
                 #if $filterCPM.option=="yes":
                 $filterCPM.cpmReq $filterCPM.sampleReq
-                #else
+                #else:
                 0 0
                 #end if
           
-                $fdr $workMode.mode
+                $fdr $workMode.mode $outFile $outFile.files_path
           
                 #if $workMode.mode=="classic":
-                "$workMode.pair1" "$workMode.pair2"
-                #else
-                "$workMode.contrast" 0
+                  "$workMode.pair1" "$workMode.pair2"
+                #else:
+                  "$workMode.contrast" $workMode.roast.option
+                  #if $workMode.roast.option=="yes":
+                    $workMode.roast.hairpinReq
+                    $workMode.roast.select.option
+                    "$workMode.roast.select.selection"
+                  #else:
+                    0 0 0
+                  #end if
                 #end if
           
-                $outFile $outFile.files_path
+                
   </command>
   
   <inputs>
@@ -45,12 +57,14 @@
     <param name="samples" type="data" format="tabular" 
            label="Samples Information"/>
            
-    <param name="fastq" type="data" format="fastq"
-           label="fastq File"/>
+    <repeat name="fastq" title="FastQ Files">       
+      <param name="file" type="data" format="fastq"/>
+    </repeat>
     
     <conditional name="positions">
       <param name="option" type="select" 
-             label="Specify Barcode and Hairpin Locations?">
+             label="Specify Barcode and Hairpin Locations?"
+             help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57">
         <option value="no" selected="True">No</option>
         <option value="yes">Yes</option>
       </param>
@@ -96,7 +110,7 @@
     <conditional name="workMode">
       <param name="mode" type="select" label="Analysis Type">
         <option value="classic">Classic Exact Test</option>
-        <option value="glm">Trendy New GLM</option>
+        <option value="glm">Generalised Linear Model</option>
       </param>
       
       <when value="classic">
@@ -108,6 +122,43 @@
         <param name="contrast" type="text" size="30"
                label="Contrasts of interest (No spaces)"
                help="Eg. Mut-WT,KD-Control"/>
+               
+        <conditional name="roast">
+          <param name="option" type="select" 
+                 label="Perform Gene Level Analysis?"
+                 help="Analyse LogFC tendencies for hairpins belonging
+                       to the same gene">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </param>
+          
+          <when value="yes">
+            <param name="hairpinReq" type="integer" value="2" min="2"
+                   label="Minimum Hairpins"
+                   help="Only genes with at least this many hairpins will
+                         be analysed"/>
+                         
+            <conditional name="select">
+              <param name="option" type="select"
+                     label="Gene Selection Method">
+                <option value="rank">Rank</option>
+                <option value="geneID">Gene Identifier</option>
+              </param>
+              <when value="rank">
+                <param name="selection" type="text" value="1:5"
+                       label="Ranks of Top Genes to Plot"/>
+              </when>
+              <when value="geneID">
+                <param name="selection" type="text" value=""
+                       label="Symbols of Genes to Plot"/>
+              </when>
+            </conditional>
+
+            
+          </when>
+          
+          <when value="no"/>
+        </conditional>
       </when>
     </conditional>
     

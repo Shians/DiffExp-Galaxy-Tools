@@ -2,6 +2,9 @@
 ### Input Processing
 ################################################################################
 
+# Record starting time
+timeStart <- as.character(Sys.time())
+
 # Loading and checking required packages
 library(methods, quietly=TRUE, warn.conflicts=FALSE)
 library(statmod, quietly=TRUE, warn.conflicts=FALSE)
@@ -13,29 +16,78 @@ if(packageVersion("edgeR") < "3.5.24"){
   message("Please update 'edgeR' to version >= 3.5.24 to run this code")
 }
 
-# Grabbing and processing command line
+# Grabbing arguments from command line
 argv <- commandArgs(TRUE)
 
+# Remove fastq file paths after collecting from argument vector
+fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq", argv)], 
+                               fixed=TRUE))
+argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
 hairpinPath <- as.character(argv[1])
 samplePath <- as.character(argv[2])
-fastqPath <- as.character(argv[3])
-barStart <- as.numeric(argv[4])
-barEnd <- as.numeric(argv[5])
-hpStart <- as.numeric(argv[6])
-hpEnd <- as.numeric(argv[7])
-cpmReq <- as.numeric(argv[8])
-sampleReq <- as.numeric(argv[9])
-fdrThresh <- as.numeric(argv[10])
-workMode <- as.character(argv[11])
+barStart <- as.numeric(argv[3])
+barEnd <- as.numeric(argv[4])
+hpStart <- as.numeric(argv[5])
+hpEnd <- as.numeric(argv[6])
+cpmReq <- as.numeric(argv[7])
+sampleReq <- as.numeric(argv[8])
+fdrThresh <- as.numeric(argv[9])
+workMode <- as.character(argv[10])
+htmlPath <- as.character(argv[11])
+folderPath <- as.character(argv[12])
 if(workMode=="classic"){
   pairData <- character()
-  pairData[2] <- as.character(argv[12])
-  pairData[1] <- as.character(argv[13])
+  pairData[2] <- as.character(argv[13])
+  pairData[1] <- as.character(argv[14])
 } else if (workMode=="glm"){
-  contrastData <- as.character(argv[12])
+  contrastData <- as.character(argv[13])
+  roastOpt <- as.character(argv[14])
+  hairpinReq <- as.numeric(argv[15])
+  selectOpt <- as.character(argv[16])
+  selectVals <- as.character(argv[17])
 }
-htmlPath <- as.character(argv[14])
-folderPath <- as.character(argv[15])
+
+# Function to sanitise contrast equations so there are no whitespaces
+# surrounding the arithmetic operators, leading or trailing whitespace
+sanitiseEquation <- function(equation){
+  equation <- gsub(" *[+] *", "+", equation)
+  equation <- gsub(" *[-] *", "-", equation)
+  equation <- gsub(" *[/] *", "/", equation)
+  equation <- gsub(" *[*] *", "*", equation)
+  equation <- gsub("^\\s+|\\s+$", "", equation)
+  return(equation)
+}
+
+# Process arguments
+if (workMode=="glm"){
+  if (roastOpt=="yes"){
+    wantRoast <- TRUE
+  } else {
+    wantRoast <- FALSE
+  }
+}
+
+# Transform selection from string into index values
+if (workMode=="glm"){
+  if (selectOpt=="rank"){
+    selectVals <- gsub(" ", "", selectVals, fixed=TRUE)
+    selectVals <- unlist(strsplit(selectVals, ","))
+    
+    for (i in 1:length(selectVals)){
+      if (grepl(":", selectVals[i], fixed=TRUE)){
+        temp <- unlist(strsplit(selectVals[i], ":"))
+        selectVals <- selectVals[-i]
+        a <- as.numeric(temp[1])
+        b <- as.numeric(temp[2])
+        selectVals <- c(selectVals, a:b)
+      }
+    }
+    selectVals <- as.numeric(unique(selectVals))
+  } else {
+    selectVals <- gsub(" ", "", selectVals, fixed=TRUE)
+    selectVals <- unlist(strsplit(selectVals, " "))
+  }
+}
 
 # Check if grouping variable has been specified
 sampleData <- read.table(samplePath, sep="\t", header=TRUE)
@@ -47,8 +99,15 @@ if(!any(grepl("group", names(sampleData)))){
 # periods
 if(exists("contrastData")){
   contrastData <- unlist(strsplit(contrastData, split=","))
+  contrastData <- sanitiseEquation(contrastData)
   contrastData <- gsub(" ", ".", contrastData, fixed=TRUE)
 }
+
+# Replace spaces with periods in pair data
+if (exists("pairData")){
+  pairData <- make.names(pairData)
+}
+
 # Generate output folder and paths
 dir.create(folderPath)
 
@@ -70,16 +129,22 @@ imgOut("barIndex")
 imgOut("mds")
 imgOut("bcv")
 if (workMode == "classic"){
-  imgOut("smear")
-  topOut <- makeOut("toptag.tsv")
+  smearPng <- makeOut(paste0("smear(", pairData[2], "-", pairData[1],").png"))
+  smearPdf <- makeOut(paste0("smear(", pairData[2], "-", pairData[1],").pdf"))
+  topOut <- makeOut(paste0("toptag(", pairData[2], "-", pairData[1],").tsv"))
 } else {
+  roastOut <- makeOut("roast.tsv")
   smearPng <- character()
   smearPdf <- character()
   topOut <- character()
+  barcodePng <- character()
+  barcodePdf <- character()
   for (i in 1:length(contrastData)){
     smearPng[i] <- makeOut(paste0("smear(", contrastData[i], ").png"))
     smearPdf[i] <- makeOut(paste0("smear(", contrastData[i], ").pdf"))
     topOut[i] <- makeOut(paste0("toptag(", contrastData[i], ").tsv"))
+    barcodePng[i] <- makeOut(paste0("barcode(", contrastData[i], ").png"))
+    barcodePdf[i] <- makeOut(paste0("barcode(", contrastData[i], ").pdf"))
   }
 }
 # Initialise data for html links and images, table with the link label and
@@ -108,9 +173,6 @@ hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 
 # Make the names of groups syntactically valid (replace spaces with periods)
 data$samples$group<-make.names(data$samples$group)
-if (exists("pairData")){
-  pairData <- make.names(pairData)
-}
 
 # Filter hairpins with low counts
 sel <- rowSums(cpm(data$counts)>cpmReq)>=sampleReq
@@ -171,22 +233,34 @@ if (workMode=="classic"){
   top <- topTags(testData, n=Inf)
   topIDs <- top$table[top$table$FDR < fdrThresh, 1]
   write.table(top, file=topOut, row.names=FALSE, sep="\t")
-  linkData <- rbind(linkData, c("Top Tags (.tsv)", "toptag.tsv"))
+  linkName <- paste0("Top Tags Table(", pairData[2], "-", pairData[1], 
+                     ") (.tsv)")
+  linkAddr <- paste0("toptag(", pairData[2], "-", pairData[1], ").tsv")
+  linkData <- rbind(linkData, c(linkName, linkAddr))
   
   # Select hairpins with FDR < 0.05 to highlight on plot
   png(smearPng, width=600, height=600)
+  plotTitle <- gsub(".", " ", 
+                    paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
+                    fixed = TRUE)
   plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
-            pch=20, cex=0.5, main="Small screen: logFC vs logCPM")
+            pch=20, cex=0.5, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
-  imageData <- rbind(imageData, c("Smear Plot", "smear.png"))
+  imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ")")
+  imgAddr <- paste0("smear(", pairData[2], "-", pairData[1],").png")
+  imageData <- rbind(imageData, c(imgName, imgAddr))
   invisible(dev.off())
   
   pdf(smearPdf)
+  plotTitle <- gsub(".", " ", 
+                    paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
+                    fixed = TRUE)
   plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
-            pch=20, cex=0.5, main="Small screen: logFC vs logCPM")
+            pch=20, cex=0.5, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
-  newEntry <- c("SmearPlot (.pdf)", "smear.pdf")
-  linkData <- rbind(linkData, newEntry)
+  imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ") (.pdf)")
+  imgAddr <- paste0("smear(", pairData[2], "-", pairData[1], ").pdf")
+  linkData <- rbind(linkData, c(imgName, imgAddr))
   invisible(dev.off())
 } else if (workMode=="glm"){
   # Generating design information
@@ -217,8 +291,9 @@ if (workMode=="classic"){
     
     # Make a plot of logFC versus logCPM
     png(smearPng[i], height=600, width=600)
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5,
-              main=paste("Smear Plot:", contrastData[i]))
+    plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
+                       fixed=TRUE))
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     imgName <- paste0("Smear Plot(", contrastData[i], ")")
@@ -227,16 +302,73 @@ if (workMode=="classic"){
     invisible(dev.off())
     
     pdf(smearPdf[i])
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5,
-              main=paste("Smear Plot:", contrastData[i]))
+    plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
+                       fixed=TRUE))
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
-    imgName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
-    imgAddr <- paste0("smear(", contrastData[i], ").pdf")
-    linkData <- rbind(linkData, c(imgName, imgAddr))
+    linkName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
+    linkAddr <- paste0("smear(", contrastData[i], ").pdf")
+    linkData <- rbind(linkData, c(linkName, linkAddr))
     invisible(dev.off())
+    
+    genes <- as.character(data$genes$Gene)
+    unq <- unique(genes)
+    unq <- unq[!is.na(unq)]
+    geneList = list()
+    for(gene in unq){
+      if (length(which(genes==gene)) >= hairpinReq){
+        geneList[[gene]] = which(genes==gene)
+      }
+    }
+    
+    if (wantRoast){
+      # Input preparaton for roast
+      nrot = 9999
+      set.seed(602214129)
+      roastData = mroast(data, index=geneList, design=design,
+                         contrast=contrasts, nrot=nrot)
+      
+      write.table(roastData, file=roastOut, sep="\t")
+      linkData <- rbind(linkData, c("Gene Level Analysis Table(.tsv)", 
+                                    "roast.tsv"))
+      if (selectOpt=="rank"){
+        selectedGenes <- rownames(roastData)[selectVals]
+      } else {
+        selectedGenes <- selectVals
+      }
+      
+      
+      png(barcodePng[i], width=600, height=length(selectedGenes)*150)
+      par(mfrow= c(length(selectedGenes), 1))
+      for(gene in selectedGenes){
+        barcodeplot(testData$table$logFC, index=geneList[[gene]],
+                    main=paste("Barcode Plot for", gene, "(logFCs)", 
+                               gsub(".", " ", contrastData[i])),
+                    labels=c("Positive logFC", "Negative logFC"))
+      }
+      imgName <- paste0("Barcode Plot(", contrastData[i], ")")
+      imgAddr <- paste0("barcode(", contrastData[i], ").png")
+      imageData <- rbind(imageData, c(imgName, imgAddr))
+      dev.off()
+      
+      pdf(barcodePdf[i], width=8, height=2)
+      for(gene in selectedGenes){
+        barcodeplot(testData$table$logFC, index=geneList[[gene]],
+                    main=paste("Barcode Plot for", gene, "(logFCs)", 
+                               gsub(".", " ", contrastData[i])),
+                    labels=c("Positive logFC", "Negative logFC"))
+      }
+      linkName <- paste0("Barcode Plot(", contrastData[i], ") (.pdf)")
+      linkAddr <- paste0("barcode(", contrastData[i], ").pdf")
+      linkData <- rbind(linkData, c(linkName, linkAddr))
+      dev.off()
+    }
   }
 }
+
+# Record ending time
+timeEnd <- as.character(Sys.time())
 
 ################################################################################
 ### HTML Generation
@@ -302,9 +434,16 @@ cata("<h3>EdgeR Analysis Output:</h3>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
 cata("exported in a pdf viewer to high resolution image format. <br/>\n")
 for (i in 1:nrow(imageData)){
-  HtmlImage(imageData$Link[i], imageData$Label[i])
+  if (grepl("barcode", imageData$Link[i])){
+    HtmlImage(imageData$Link[i], imageData$Label[i], 
+              height=length(selectedGenes)*150)
+  } else {
+    HtmlImage(imageData$Link[i], imageData$Label[i])
+  }
 }
 cata("<br/>\n")
+
+cata("<h4>Input Summary:</h4>\n")
 cata("<ul>\n")
 ListItem(hpReadout[1])
 ListItem(hpReadout[2])
@@ -315,16 +454,34 @@ ListItem(hpReadout[4])
 ListItem(hpReadout[7])
 cata("</ul>\n")
 cata(hpReadout[8:11], sep="<br/>\n")
-cata("<h4>Additional Output:</h4>\n")
 
+cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)){
-  HtmlLink(linkData$Link[i], linkData$Label[i])
+  if (!grepl(".tsv", linkData$Link[i])){
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
 }
+
+cata("<h4>Tables:</h4>\n")
+for (i in 1:nrow(linkData)){
+  if (grepl(".tsv", linkData$Link[i])){
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
+}
+
 cata("<p>alt-click any of the links to download the file, or click the name ")
 cata("of this task in the galaxy history panel and click on the floppy ")
-cata("disk icon to download all files in a zip file.</p>\n")
+cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
+cata("<table border=\"0\">\n")
+
+cata("<tr>\n")
+TableItem("Task started at:"); TableItem(timeStart)
+cata("</tr>\n")
+cata("<tr>\n")
+TableItem("Task ended at:"); TableItem(timeEnd)
+cata("</tr>\n")
 
 cata("</body>\n")
 cata("</html>")
