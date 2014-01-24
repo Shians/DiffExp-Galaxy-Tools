@@ -1,6 +1,6 @@
 <tool id="shRNAseq" name="shRNAseq Tool" version="1.0.3">
   <description>
-    Analyse hairpin differential expression using edgeR
+    Analyse hairpin differential representation using edgeR
   </description>
     
   <requirements>
@@ -17,33 +17,48 @@
                   fastq::$fas.file
                 #end for
   
-                $hairpin $samples 
+                $hairpin
+                $samples
                   
                 #if $positions.option=="yes":
-                $positions.barstart $positions.barend
-                $positions.hpstart $positions.hpend 
+                  $positions.barstart
+                  $positions.barend
+                  $positions.hpstart
+                  $positions.hpend
                 #else:
-                1 5 37 57
+                  1
+                  5
+                  37
+                  57
                 #end if
           
                 #if $filterCPM.option=="yes":
-                $filterCPM.cpmReq $filterCPM.sampleReq
+                  $filterCPM.cpmReq
+                  $filterCPM.sampleReq
                 #else:
-                0 0
+                  0
+                  0
                 #end if
           
-                $fdr $workMode.mode $outFile $outFile.files_path
+                $fdr
+                $workMode.mode
+                $outFile
+                $outFile.files_path
           
                 #if $workMode.mode=="classic":
-                  "$workMode.pair1" "$workMode.pair2"
+                  "$workMode.pair1"
+                  "$workMode.pair2"
                 #else:
-                  "$workMode.contrast" $workMode.roast.option
+                  "$workMode.contrast"
+                  $workMode.roast.option
                   #if $workMode.roast.option=="yes":
                     $workMode.roast.hairpinReq
                     $workMode.roast.select.option
                     "$workMode.roast.select.selection"
                   #else:
-                    0 0 0
+                    0
+                    0
+                    0
                   #end if
                 #end if
           
@@ -87,7 +102,7 @@
     
     <conditional name="filterCPM">
       <param name="option" type="select" label="Filter Low CPM?"
-       help="Treat hairpins with very low expression as unexpressed and 
+       help="Treat hairpins with very low representation as unexpressed and 
        			 filter out to speed up computation">
         <option value="no" selected="True">No</option>
         <option value="yes">Yes</option>
@@ -108,20 +123,25 @@
     </conditional>
     
     <conditional name="workMode">
-      <param name="mode" type="select" label="Analysis Type">
+      <param name="mode" type="select" label="Analysis Type"
+       help="Classic Exact Tests are useful for simple comparisons across
+             two sampling groups. Generalised linear models allow for more 
+             complex contrasts and gene level analysis to be made">
         <option value="classic">Classic Exact Test</option>
         <option value="glm">Generalised Linear Model</option>
       </param>
       
       <when value="classic">
-        <param name="pair1" type="text" label="Compare"/>
-        <param name="pair2" type="text" label="To"/>
+        <param name="pair1" type="text" label="Compare" size="40"/>
+        <param name="pair2" type="text" label="To" size="40"
+               help="The analysis will subtract values of this group from those
+                     in the group above to establish the difference"/>
       </when>
       
       <when value="glm">
-        <param name="contrast" type="text" size="30"
-               label="Contrasts of interest (No spaces)"
-               help="Eg. Mut-WT,KD-Control"/>
+        <param name="contrast" type="text" size="60"
+               label="Contrasts of interest"
+               help="Eg. Mut-WT, KD-Control"/>
                
         <conditional name="roast">
           <param name="option" type="select" 
@@ -141,16 +161,24 @@
             <conditional name="select">
               <param name="option" type="select"
                      label="Gene Selection Method">
-                <option value="rank">Rank</option>
-                <option value="geneID">Gene Identifier</option>
+                <option value="rank">By p-value Rank</option>
+                <option value="geneID">By Gene Identifier</option>
               </param>
               <when value="rank">
-                <param name="selection" type="text" value="1:5"
-                       label="Ranks of Top Genes to Plot"/>
+                <param name="selection" type="text" size="40" value="1:5"
+                       label="Ranks of Top Genes to Plot"
+                       help="Genes are ranked in ascending p-value for
+                             differential representation, individual ranks can
+                             be entered seperated by comma or a range seperated
+                             by colon"/>
               </when>
               <when value="geneID">
-                <param name="selection" type="text" value=""
-                       label="Symbols of Genes to Plot"/>
+                <param name="selection" type="text" size="80" value=""
+                       label="Symbols of Genes to Plot"
+                       help="Select genes based on their identifier in the
+                             'Gene' column of the sample information file.
+                             Please ensure exact match with the values in input
+                             file and separate selections with commas."/>
               </when>
             </conditional>
 
@@ -173,6 +201,104 @@
   </outputs>
   
   <help>
+.. class:: infomark
+
+**What it does**
+
+Given tables containing information about the hairpins and their associated
+barcodes, information about the samples and fastq file containing the hairpin
+reads. This tool will generate plots and tables for the analysis of differential
+representation.
+
+-----
+
+.. class:: infomark
+
+**INPUTS**
+
+**Hairpin Data**
+
+A tab delimited text table of information regarding the hairpins. Should have
+columns ID, Sequence and Gene to uniquely identify the hairpin, align it with
+the reads to produce counts and identify which gene the hairpin acts on.
+
+NOTE: the column names are case sensitive and should be input exactly as they
+are shown here.
+
+Example::
+
+  ID	Sequences	Gene
+  Control1	TCTCGCTTGGGCGAGAGTAAG	2
+  Control2	CCGCCTGAAGTCTCTGATTAA	2
+  Control3	AGGAATTATAATGCTTATCTA	2
+  Hairpin1	AAGGCAGAGACTGACCACCTA	4
+  Hairpin2	GAGCGACCTGGTGTTACTCTA	4
+  Hairpin3	ATGGTGTAAATAGAGCTGTTA	4
+  Hairpin4	CAGCTCATCTTCTGTGAAGAA	4
+  Hairpin5	CAGCTCTGTGGGTCAGAAGAA	4
+  Hairpin6	CCAGGCACAGATCTCAAGATA	4
+  Hairpin7	ATGACAAGAAAGACATCTCAA	7
+  ...
+
+**Samples Information**
+
+A tab delimited text table of information regarding the samples. Should have
+columns ID, Sequence and group to uniquely identify each sample, identify the
+sample in the reads by its barcode sequence and correctly group replicates for
+analysis. Additional columns may inserted for annotation purposes and will not
+interfere with analysis as long as the necessary columns are present.
+
+NOTE: the column names are case sensitive and should be input exactly as they
+are shown here.
+
+Example::
+
+  ID	Sequences	group	Replicate
+  3	GAAAG	Day 2	1
+  6	GAACC	Day 10	1
+  9	GAAGA	Day 5 GFP neg	1
+  16	GAATT	Day 5 GFP pos	1
+  18	GACAC	Day 2	2
+  21	GACCA	Day 10	2
+  28	GACGT	Day 5 GFP neg	2
+  31	GACTG	Day 5 GFP pos	2
+  33	GAGAA	Day 2	3
+  40	GAGCT	Day 10	3
+  ...
+  
+**Specify Barcode and Hairpin Locations**
+
+It is assumed that in the sequencing reads that the first 5 bases are the
+barcodes and that bases 37-57 are the hairpins. If this is not the case then the
+values of the positions can be changed, however it still requires the barcodes
+and hairpins to be in a consistent location an in a continuous sequence.
+
+**Filter Low CPM**
+
+Often in a large screen there may members with very low counts which are of no
+interest in the experiment, these may be filtered out to speed up computations.
+Filtering will be based on counts per million in a required number of samples.
+
+**Analysis Type**
+
+  **Classic Exact Test:** This allows two experimental groups to be compared and
+  p-values for differential representation derivec for each hairpin. Simple and
+  fast for straightforward comparisons. In this option you will have the option of
+  "*Compare* x *To* y" which implicitly subtracts the data from y from that of x
+  to produce the comparison.
+
+  **Generalised Linear Model:** This allow for complex contrasts to be specified
+  and also gene level analysis to be performed. If this option is chosen then
+  contrasts must be explicitly stated in equations and multiple contrasts can be
+  made. In addition there will be the option to analyse hairpins on a per-gene
+  basis to see if hairpins belonging to a particular gene have any overall
+  tendencies for the direction of their log-fold-change.
+
+**FDR Threshold**
+The smear plot in the output will have hairpins highlighted to signify
+significant differential representation. The significance is determined by
+contorlling the false discovery rate, only those with a FDR lower than the
+threshold will be highlighted in the plot.
   </help>
 </tool>
   

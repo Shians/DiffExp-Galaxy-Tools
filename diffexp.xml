@@ -22,21 +22,29 @@
                 None
               #end if
               
-              $outFile $outFile.files_path $wantRda.rdaOption <!--5-->
-              $normalisationOption $weightCond.weightOption   <!--7-->
+              $outFile
+              $outFile.files_path
+              $wantRda.rdaOption
+              $normalisationOption 
+              $weightCond.weightOption
               $contrast
-              <!--If filtering is required then input filter options, 
-              otherwise enter 0 0 as the options-->
+
               #if $filterCPM.filterLowCPM=="yes":
-                $filterCPM.cpmReq $filterCPM.sampleReq
+                $filterCPM.cpmReq
+                $filterCPM.sampleReq
               #else:
-                0 0
-              #end if                                         <!--10-->
+                0
+                0
+              #end if
               
               #if $testOpt.wantOpt=="yes":
-              	$testOpt.pAdjust $testOpt.pVal $testOpt.lfc
+              	$testOpt.pAdjust
+              	$testOpt.pVal
+              	$testOpt.lfc
               #else:
-                BH 0.05 0
+                BH
+                0.05
+                0
               #end if
               
               <!--*Code commented until solution for multiple factors is found*
@@ -175,11 +183,21 @@
     
   
 <help>
+.. class:: infomark
+
+**What it does**
+
+Given a matrix of counts and optional information about the genes, this tool
+produces plots and tables useful in the analysis of differential gene 
+expression.
+
 .. class:: warningmark
 
 This tool is dependent on the R packages limma_ and edgeR_ as a part of the
 bioconductor project. Please ensure that these packages are installed on the
 server running this tool.
+
+-----
 
 **Counts Data:**
 A matrix of expression level with rows corresponding to particular genes
@@ -274,6 +292,8 @@ Option to downweight outlier samples such that their information is still
 used in the statistical analysis but their impact is reduced. Use this
 whenever significant outliers are present. The MDS plotting tool in this package
 is useful for identifying outliers
+
+-----
 
 **Citations:**
 

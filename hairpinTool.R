@@ -133,16 +133,17 @@ if (workMode == "classic"){
   smearPdf <- makeOut(paste0("smear(", pairData[2], "-", pairData[1],").pdf"))
   topOut <- makeOut(paste0("toptag(", pairData[2], "-", pairData[1],").tsv"))
 } else {
-  roastOut <- makeOut("roast.tsv")
   smearPng <- character()
   smearPdf <- character()
   topOut <- character()
+  roastOut <- character()
   barcodePng <- character()
   barcodePdf <- character()
   for (i in 1:length(contrastData)){
     smearPng[i] <- makeOut(paste0("smear(", contrastData[i], ").png"))
     smearPdf[i] <- makeOut(paste0("smear(", contrastData[i], ").pdf"))
     topOut[i] <- makeOut(paste0("toptag(", contrastData[i], ").tsv"))
+    roastOut[i] <- makeOut(paste0("roast(", contrastData[i], ").tsv"))
     barcodePng[i] <- makeOut(paste0("barcode(", contrastData[i], ").png"))
     barcodePdf[i] <- makeOut(paste0("barcode(", contrastData[i], ").pdf"))
   }
@@ -165,9 +166,11 @@ hpReadout <- capture.output(
                               verbose=TRUE)
 )
 closeAllConnections()
-hpReadout <- hpReadout[!grepl("million", hpReadout)]
+
+# Remove entries that show processing data or is empty
 hpReadout <- hpReadout[hpReadout!=""]
-hpReadout <- hpReadout[-(3:4)]
+hpReadout <- hpReadout[!grepl("Processing", hpReadout)]
+hpReadout <- hpReadout[!grepl("in file", hpReadout)]
 hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 
 
@@ -187,26 +190,38 @@ data <- estimateDisp(data)
 # Plot number of hairpins that could be matched per sample
 png(barIndexPng, width=600, height=600)
 barplot(height<-colSums(data$counts), las=2, main="Counts per index", 
-        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+        cex.names=1.0, cex.axis=0.8, ylim=c(0, max(height)*1.2))
 imageData[1, ] <- c("Counts per Index", "barIndex.png")
 invisible(dev.off())
 
 pdf(barIndexPdf)
 barplot(height<-colSums(data$counts), las=2, main="Counts per index", 
-        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+        cex.names=1.0, cex.axis=0.8, ylim=c(0, max(height)*1.2))
 linkData[1, ] <- c("Counts per Index Barplot (.pdf)", "barIndex.pdf")
 invisible(dev.off())
 
 # Plot per hairpin totals across all samples
 png(barHairpinPng, width=600, height=600)
-barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
-        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+if (nrow(data$counts)<50){
+  barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+          cex.names=0.8, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+} else {
+  barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+          cex.names=0.8, cex.axis=0.8, ylim=c(0, max(height)*1.2),
+          names.arg=FALSE)
+}
 imageData <- rbind(imageData, c("Counts per Hairpin", "barHairpin.png"))
 invisible(dev.off())
 
 pdf(barHairpinPdf)
-barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
-        cex.names=0.5, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+if (nrow(data$counts)<50){
+  barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+          cex.names=0.8, cex.axis=0.8, ylim=c(0, max(height)*1.2))
+} else {
+  barplot(height<-rowSums(data$counts), las=2, main="Counts per hairpin",
+          cex.names=0.8, cex.axis=0.8, ylim=c(0, max(height)*1.2),
+          names.arg=FALSE)
+}
 newEntry <- c("Counts per Hairpin Barplot (.pdf)", "barHairpin.pdf")
 linkData <- rbind(linkData, newEntry)
 invisible(dev.off())
@@ -244,7 +259,7 @@ if (workMode=="classic"){
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
   plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
-            pch=20, cex=0.5, main=plotTitle)
+            pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ")")
   imgAddr <- paste0("smear(", pairData[2], "-", pairData[1],").png")
@@ -256,7 +271,7 @@ if (workMode=="classic"){
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
   plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
-            pch=20, cex=0.5, main=plotTitle)
+            pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ") (.pdf)")
   imgAddr <- paste0("smear(", pairData[2], "-", pairData[1], ").pdf")
@@ -293,7 +308,7 @@ if (workMode=="classic"){
     png(smearPng[i], height=600, width=600)
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5, main=plotTitle)
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     imgName <- paste0("Smear Plot(", contrastData[i], ")")
@@ -304,7 +319,7 @@ if (workMode=="classic"){
     pdf(smearPdf[i])
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.5, main=plotTitle)
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     linkName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
@@ -315,10 +330,10 @@ if (workMode=="classic"){
     genes <- as.character(data$genes$Gene)
     unq <- unique(genes)
     unq <- unq[!is.na(unq)]
-    geneList = list()
+    geneList <- list()
     for(gene in unq){
       if (length(which(genes==gene)) >= hairpinReq){
-        geneList[[gene]] = which(genes==gene)
+        geneList[[gene]] <- which(genes==gene)
       }
     }
     
@@ -326,12 +341,14 @@ if (workMode=="classic"){
       # Input preparaton for roast
       nrot = 9999
       set.seed(602214129)
-      roastData = mroast(data, index=geneList, design=design,
+      roastData <- mroast(data, index=geneList, design=design,
                          contrast=contrasts, nrot=nrot)
-      
-      write.table(roastData, file=roastOut, sep="\t")
-      linkData <- rbind(linkData, c("Gene Level Analysis Table(.tsv)", 
-                                    "roast.tsv"))
+      roastData <- cbind(GeneID=rownames(roastData), roastData)
+      write.table(roastData, file=roastOut[i], row.names=FALSE, sep="\t")
+      linkName <- paste0("Gene Level Analysis Table(", contrastData[i], 
+                         ") (.tsv)")
+      linkAddr <- paste0("roast(", contrastData[i], ").tsv")
+      linkData <- rbind(linkData, c(linkName, linkAddr))
       if (selectOpt=="rank"){
         selectedGenes <- rownames(roastData)[selectVals]
       } else {
