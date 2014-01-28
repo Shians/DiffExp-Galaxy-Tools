@@ -12,8 +12,8 @@
     <exit_code range="1" level="fatal" description="Unexpected Error" />
   </stdio>
   
-  <command interpreter="RScript">
-  hairpintool.R #for $i, $fas in enumerate($fastq):
+  <command interpreter="Rscript">
+  hairpinTool.R #for $i, $fas in enumerate($fastq):
                   fastq::$fas.file
                 #end for
   

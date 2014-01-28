@@ -3,7 +3,7 @@
         Create a multidimensional scaling plot to identify outliers in samples
     </description>
     
-    <command interpreter="RScript">
+    <command interpreter="Rscript">
         plotMDS.R $countPath $outDir $factData $labelData $labelSize
 
     </command>
