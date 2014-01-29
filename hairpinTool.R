@@ -12,8 +12,8 @@ library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
 
-if(packageVersion("edgeR") < "3.5.24"){
-  message("Please update 'edgeR' to version >= 3.5.24 to run this code")
+if(packageVersion("edgeR") < "3.5.23"){
+  message("Please update 'edgeR' to version >= 3.5.23 to run this script")
 }
 
 # Grabbing arguments from command line
