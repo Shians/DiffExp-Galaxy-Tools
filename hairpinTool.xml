@@ -299,6 +299,51 @@ The smear plot in the output will have hairpins highlighted to signify
 significant differential representation. The significance is determined by
 contorlling the false discovery rate, only those with a FDR lower than the
 threshold will be highlighted in the plot.
+
+-----
+
+**Citations:**
+
+.. class:: infomark
+
+limma
+
+Please cite the paper below for the limma software itself.  Please also try
+to cite the appropriate methodology articles that describe the statistical
+methods implemented in limma, depending on which limma functions you are
+using.  The methodology articles are listed in Section 2.1 of the limma 
+User's Guide.
+
+	* Smyth, GK (2005). Limma: linear models for microarray data. In: 
+	  'Bioinformatics and Computational Biology Solutions using R and 
+	  Bioconductor'. R. Gentleman, V. Carey, S. Dudoit, R. Irizarry, 
+	  W. Huber (eds), Springer, New York, pages 397-420.
+
+.. class:: infomark
+
+edgeR
+
+Please cite the first paper for the software itself and the other papers for
+the various original statistical methods implemented in edgeR.  See 
+Section 1.2 in the User's Guide for more detail.
+
+	* Robinson MD, McCarthy DJ and Smyth GK (2010). edgeR: a Bioconductor 
+	  package for differential expression analysis of digital gene expression 
+	  data. Bioinformatics 26, 139-140
+	  
+	* Robinson MD and Smyth GK (2007). Moderated statistical tests for assessing 
+	  differences in tag abundance. Bioinformatics 23, 2881-2887
+	  
+	* Robinson MD and Smyth GK (2008). Small-sample estimation of negative 
+	  binomial dispersion, with applications to SAGE data.
+	  Biostatistics, 9, 321-332
+	  
+	* McCarthy DJ, Chen Y and Smyth GK (2012). Differential expression analysis 
+	  of multifactor RNA-Seq experiments with respect to biological variation. 
+	  Nucleic Acids Research 40, 4288-4297
+
+.. _edgeR: http://www.bioconductor.org/packages/release/bioc/html/edgeR.html
+.. _limma: http://www.bioconductor.org/packages/release/bioc/html/limma.html
   </help>
 </tool>
   

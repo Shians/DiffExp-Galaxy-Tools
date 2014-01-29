@@ -1,0 +1,66 @@
+<tool id="Rsubread" name="Rsubread Mapping" version="1.0.0">
+  <description>
+    Produce table of feature counts using Rsubread.
+  </description>
+  
+  <requirements>
+    <requirement type="R-module">edgeR</requirement>
+    <requirement type="R-module">limma</requirement>
+  </requirements>
+  
+  <stdio>
+    <exit_code range="1:" level="fatal" description="Tool exception" />
+  </stdio>
+  
+  <command interpreter="Rscript">
+  RSubread.R
+  </command>
+  
+  <inputs>
+    <param name="inputFormat" type="select" label="Input Data Type">
+      <option value="gzFASTQ">G-zipped FastQ</option>
+      <option value="FASTQ">FastQ</option>
+    </param>
+    
+    <conditional name="reference_genome">
+      <param name="source" type="select" 
+             label="Will you select a reference genome from your history or use 
+                    a built-in index?">
+        <option value="indexed">Use a built-in index</option>
+        <option value="history">Use one from the history</option>
+      </param>
+
+          
+    <conditional name="singlePaired">
+      <param name="sPaired" type="select" label="Is this library mate-paired?">
+        <option value="single">Single-end</option>
+        <option value="paired">Paired-end</option>
+      </param>
+      
+      <when value="single">
+        <repeat name="fastq" title="FastQ Files">     
+          <param name="label" type="text" label="Sample Label"/>
+          <param name="group" type="text" label="Experimental Group"/>
+          <param name="file" type="data" format="fastq"/>
+        </repeat>
+      </when>
+      
+      <when value="paired">
+        <repeat name="fastq" title="FastQ Pairs">
+          <param name="label" type="text" label="Sample Label"/>
+          <param name="group" type="text" label="Experimental Group"/>
+          <param name="Pair1" type="data" format="fastq"/>
+          <param name="Pair2" type="data" format="fastq"/>
+        </repeat>
+      </when>
+      
+    </conditional>
+  </inputs>
+  
+  <outputs>
+    <data format="tabular" name="counts" label="counts"/>
+  </outputs>
+  
+  <help>
+  </help>
+</tool>
