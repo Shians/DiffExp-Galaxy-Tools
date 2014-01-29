@@ -29,6 +29,13 @@
         <option value="indexed">Use a built-in index</option>
         <option value="history">Use one from the history</option>
       </param>
+      
+      <when value="indexed">
+      
+      </when>
+      <when value="history"/>
+      
+      </when>
 
           
     <conditional name="singlePaired">
