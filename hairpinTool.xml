@@ -9,7 +9,7 @@
   </requirements>
   
   <stdio>
-    <exit_code range="1" level="fatal" description="Unexpected Error" />
+    <exit_code range="1:" level="fatal" description="Tool exception" />
   </stdio>
   
   <command interpreter="Rscript">

@@ -31,11 +31,21 @@
       </param>
       
       <when value="indexed">
-      
+        <param name="index" type="select" label="Select a reference genome">
+          <options from_data_table="rsubread_indexes">
+            <filter type="sort_by" column="2"/>
+            <validator type="no_options" 
+                       message="No indexes are available for the selected input 
+                                dataset"/>
+          </options>
+        </param>
       </when>
-      <when value="history"/>
       
+      <when value="history">
+        <param name="own_file" type="data" format="fasta"
+               label="Select the reference genome" />
       </when>
+    </conditional>
 
           
     <conditional name="singlePaired">

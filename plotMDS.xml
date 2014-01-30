@@ -3,6 +3,10 @@
         Create a multidimensional scaling plot to identify outliers in samples
     </description>
     
+    <stdio>
+        <exit_code range="1:" level="fatal" description="Tool exception" />
+    </stdio>
+    
     <command interpreter="Rscript">
         plotMDS.R $countPath $outDir $factData $labelData $labelSize
 
