@@ -41,6 +41,7 @@
                 #end if
           
                 $fdr
+                $lfc
                 $workMode.mode
                 $outFile
                 $outFile.files_path
@@ -75,11 +76,11 @@
     <repeat name="fastq" title="FastQ Files">       
       <param name="file" type="data" format="fastq"/>
     </repeat>
-    
+        
     <conditional name="positions">
       <param name="option" type="select" 
              label="Specify Barcode and Hairpin Locations?"
-             help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57">
+             help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57.">
         <option value="no" selected="True">No</option>
         <option value="yes">Yes</option>
       </param>
@@ -103,7 +104,7 @@
     <conditional name="filterCPM">
       <param name="option" type="select" label="Filter Low CPM?"
        help="Treat hairpins with very low representation as unexpressed and 
-       			 filter out to speed up computation">
+       			 filter out to speed up computation.">
         <option value="no" selected="True">No</option>
         <option value="yes">Yes</option>
       </param>
@@ -115,7 +116,7 @@
           <param name="sampleReq" type="integer" value="3" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
-                       CPM in at least this many samples"/>
+                       CPM in at least this many samples."/>
         </when>
         
         <when value="no"/>
@@ -126,7 +127,7 @@
       <param name="mode" type="select" label="Analysis Type"
        help="Classic Exact Tests are useful for simple comparisons across
              two sampling groups. Generalised linear models allow for more 
-             complex contrasts and gene level analysis to be made">
+             complex contrasts and gene level analysis to be made.">
         <option value="classic">Classic Exact Test</option>
         <option value="glm">Generalised Linear Model</option>
       </param>
@@ -135,7 +136,7 @@
         <param name="pair1" type="text" label="Compare" size="40"/>
         <param name="pair2" type="text" label="To" size="40"
                help="The analysis will subtract values of this group from those
-                     in the group above to establish the difference"/>
+                     in the group above to establish the difference."/>
       </when>
       
       <when value="glm">
@@ -147,7 +148,7 @@
           <param name="option" type="select" 
                  label="Perform Gene Level Analysis?"
                  help="Analyse LogFC tendencies for hairpins belonging
-                       to the same gene">
+                       to the same gene.">
             <option value="no">No</option>
             <option value="yes">Yes</option>
           </param>
@@ -156,7 +157,7 @@
             <param name="hairpinReq" type="integer" value="2" min="2"
                    label="Minimum Hairpins"
                    help="Only genes with at least this many hairpins will
-                         be analysed"/>
+                         be analysed."/>
                          
             <conditional name="select">
               <param name="option" type="select"
@@ -170,7 +171,7 @@
                        help="Genes are ranked in ascending p-value for
                              differential representation, individual ranks can
                              be entered seperated by comma or a range seperated
-                             by colon"/>
+                             by colon."/>
               </when>
               <when value="geneID">
                 <param name="selection" type="text" size="80" value=""
@@ -193,7 +194,12 @@
     <param name="fdr" type="float" value="0.05" min="0" max="1"
            label="FDR Threshold"
            help="All observations below this threshold will be highlighted
-                 in the smear plot"/>
+                 in the smear plot."/>
+    <param name="lfc" type="float" value="0" min="0" 
+           label="Absolute LogFC Threshold"
+           help="In additional to meeting the FDR requirement, the absolute 
+                 value of the log-fold-change of the observation must be above
+                 this threshold to be highlighted."/>
   </inputs>
 
   <outputs>
@@ -281,18 +287,18 @@ Filtering will be based on counts per million in a required number of samples.
 
 **Analysis Type**
 
-  **Classic Exact Test:** This allows two experimental groups to be compared and
-  p-values for differential representation derivec for each hairpin. Simple and
-  fast for straightforward comparisons. In this option you will have the option of
-  "*Compare* x *To* y" which implicitly subtracts the data from y from that of x
-  to produce the comparison.
+ * **Classic Exact Test:** This allows two experimental groups to be compared and
+   p-values for differential representation derivec for each hairpin. Simple and
+   fast for straightforward comparisons. In this option you will have the option of
+   "*Compare* x *To* y" which implicitly subtracts the data from y from that of x
+   to produce the comparison.
 
-  **Generalised Linear Model:** This allow for complex contrasts to be specified
-  and also gene level analysis to be performed. If this option is chosen then
-  contrasts must be explicitly stated in equations and multiple contrasts can be
-  made. In addition there will be the option to analyse hairpins on a per-gene
-  basis to see if hairpins belonging to a particular gene have any overall
-  tendencies for the direction of their log-fold-change.
+ * **Generalised Linear Model:** This allow for complex contrasts to be specified
+   and also gene level analysis to be performed. If this option is chosen then
+   contrasts must be explicitly stated in equations and multiple contrasts can be
+   made. In addition there will be the option to analyse hairpins on a per-gene
+   basis to see if hairpins belonging to a particular gene have any overall
+   tendencies for the direction of their log-fold-change.
 
 **FDR Threshold**
 The smear plot in the output will have hairpins highlighted to signify

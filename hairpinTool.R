@@ -32,19 +32,20 @@ hpEnd <- as.numeric(argv[6])
 cpmReq <- as.numeric(argv[7])
 sampleReq <- as.numeric(argv[8])
 fdrThresh <- as.numeric(argv[9])
-workMode <- as.character(argv[10])
-htmlPath <- as.character(argv[11])
-folderPath <- as.character(argv[12])
+lfcThresh <- as.numeric(argv[10])
+workMode <- as.character(argv[11])
+htmlPath <- as.character(argv[12])
+folderPath <- as.character(argv[13])
 if(workMode=="classic"){
   pairData <- character()
-  pairData[2] <- as.character(argv[13])
-  pairData[1] <- as.character(argv[14])
+  pairData[2] <- as.character(argv[14])
+  pairData[1] <- as.character(argv[15])
 } else if (workMode=="glm"){
-  contrastData <- as.character(argv[13])
-  roastOpt <- as.character(argv[14])
-  hairpinReq <- as.numeric(argv[15])
-  selectOpt <- as.character(argv[16])
-  selectVals <- as.character(argv[17])
+  contrastData <- as.character(argv[14])
+  roastOpt <- as.character(argv[15])
+  hairpinReq <- as.numeric(argv[16])
+  selectOpt <- as.character(argv[17])
+  selectVals <- as.character(argv[18])
 }
 
 # Function to sanitise contrast equations so there are no whitespaces
@@ -246,7 +247,8 @@ if (workMode=="classic"){
   testData <- exactTest(data, pair=pairData)
   
   top <- topTags(testData, n=Inf)
-  topIDs <- top$table[top$table$FDR < fdrThresh, 1]
+  topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                      (top$table$logFC > lfcThresh), 1]
   write.table(top, file=topOut, row.names=FALSE, sep="\t")
   linkName <- paste0("Top Tags Table(", pairData[2], "-", pairData[1], 
                      ") (.tsv)")
@@ -297,7 +299,8 @@ if (workMode=="classic"){
     
     # Select hairpins with FDR < 0.05 to highlight on plot
     top <- topTags(testData, n=Inf)
-    topIDs <- top$table[top$table$FDR < fdrThresh, 1]
+    topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                        (top$table$logFC > lfcThresh), 1]
     write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
     
     linkName <- paste0("Top Tags Table(", contrastData[i], ") (.tsv)")

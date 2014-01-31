@@ -14,7 +14,7 @@
   </stdio>
   
   <command interpreter="Rscript">
-    diffexp.R $counts 
+    diffexp.R $counts
               
               #if $anno.annoOpt=="yes":
                 $geneanno 
@@ -154,10 +154,13 @@
           </param>
           
           <param name="pVal" type="float" value="0.05" min="0" max="1"
-    			 		   label="P-Value Threshold"/>
+    			 		   label="P-Value Threshold"
+    			 		   help="Genes below this threshold are considered significant"/>
     			 		   
           <param name="lfc" type="float" value="0" min="0"
-          			 label="Minimum log2-fold-change Required"/>
+          			 label="Minimum log2-fold-change Required"
+          			 help="Genes above this threshold and below the p-value
+          			       threshold are considered significant"/>
         </when>
         
         <when value="no"/>
