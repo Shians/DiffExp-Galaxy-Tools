@@ -1,4 +1,4 @@
-<tool id="Rsubread" name="Rsubread Mapping" version="1.0.0">
+<tool id="Rsubread" name="Rsubread Mapping" version="1.0.1">
   <description>
     Produce table of feature counts using Rsubread.
   </description>
@@ -15,7 +15,12 @@
   <command interpreter="Rscript">
   RSubread.R  $workMode
               $inputFormat
-              $reference_genome.index
+              $refGenome.source
+              #if $refGenome.source=="indexed"
+                $refGenome.index.fields.path
+              #elif $refGenome.source=="history"
+                $refGenome.index
+              #end if
               $annotation
               $singlePaired.sPaired
               
@@ -45,7 +50,7 @@
       <option value="FASTQ">FastQ</option>
     </param>
     
-    <conditional name="reference_genome">
+    <conditional name="refGenome">
       <param name="source" type="select" 
              label="Will you select a reference genome from your history or use 
                     a built-in index?">
@@ -55,7 +60,7 @@
       
       <when value="indexed">
         <param name="index" type="select" label="Select a reference genome">
-          <options from_data_table="rsubread_indexes">
+          <options from_data_table="rsubread_indices">
             <filter type="sort_by" column="2"/>
             <validator type="no_options" 
                        message="No indexes are available for the selected input 

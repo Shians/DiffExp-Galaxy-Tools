@@ -18,20 +18,20 @@ fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq::", argv)],
 argv <- argv[!grepl("fastq::", argv)]
 workMode <- as.character(argv[1])
 inputFormat <- as.character(argv[2])
-refIndex <- as.character(argv[3])
-annoOpt <- as.character(argv[4])
-pairMode <- as.character(argv[5])
-nThreads <- as.numeric(argv[6])
-countsOut <- as.character(argv[7])
-geneannoOut <- as.character(argv[8])
+refIndexSource <- as.character(argv[3])
+refIndex <- as.character(argv[4])
+annoOpt <- as.character(argv[5])
+pairMode <- as.character(argv[6])
+nThreads <- as.numeric(argv[7])
+countsOut <- as.character(argv[8])
+geneannoOut <- as.character(argv[9])
 
-# Process arguments
+# Collecting name, group and path values for each fastq input
 fastqPath <- strsplit(fastqPath, "::")
 nameVec <- character()
 groupVec <- character()
 pathVec1 <- character()
 pathVec2 <- character()
-
 for (i in 1:length(fastqPath)){
   nameVec <- c(nameVec, fastqPath[[i]][1])
   groupVec <- c(groupVec, fastqPath[[i]][2])
@@ -50,22 +50,27 @@ if (pairMode=="single"){
 
 filesOut <- character()
 for (i in 1:nrow(fastqData)){
-  filesOut[i] <- paste(fastqData$Name[i], ".bam")
+  filesOut[i] <- paste0(fastqData$Name[i], ".bam")
 }
 
 ################################################################################
 ### Data Processing
 ################################################################################
 
-buildindex(basename="index", reference=refIndex)
+if (refIndexSource=="history"){
+  buildindex(basename="index", reference=refIndex)
+  indexName <- "index"
+} else if (refIndexSource=="indexed"){
+  indexName <- refIndex
+}
 
 if (workMode == "subjunc"){
   for (i in 1:nrow(fastqData)){
     if (pairMode=="single"){
-      subjunc(index="index", readfile1=fastqData$Path[i], 
+      subjunc(index=indexName, readfile1=fastqData$Path[i], 
               output_file=filesOut[i], output_format="BAM", nthreads=nThreads)
     } else if (pairMode=="paired"){
-      subjunc(index="index", readfile1=fastqData$Path1[i],
+      subjunc(index=indexName, readfile1=fastqData$Path1[i],
               readfile2=fastqData$Path2[i], output_file=filesOut[i], 
               output_format="BAM", nthreads=nThreads)
     }
@@ -73,10 +78,10 @@ if (workMode == "subjunc"){
 } else if (workMode=="align"){
    for (i in 1:nrow(fastqData)){
     if (pairMode=="single"){
-      align(index="index", readfile1=fastqData$Path[i], 
+      align(index=indexName, readfile1=fastqData$Path[i], 
             output_file=filesOut[i], output_format="BAM", nthreads=nThreads)
     } else if (pairMode=="paired"){
-      align(index="index", readfile1=fastqData$Path1[i],
+      align(index=indexName, readfile1=fastqData$Path1[i],
             readfile2=fastqData$Path2[i], output_file=filesOut[i], 
             output_format="BAM", nthreads=nThreads)
     }
