@@ -37,58 +37,58 @@
     </outputs>
     
     <help>
-      .. class:: warningmark
-    
-      The input must be in tabular format, if your input does not appear in the
-      drop down menu then check the format in the history panel.
+.. class:: warningmark
 
-      **Counts Data**
+The input must be in tabular format, if your input does not appear in the
+drop down menu then check the format in the history panel.
+
+**Counts Data**
       
-      A matrix of expression level with rows corresponding to particular genes
-      and columns corresponding to the feature count in particular samples.
-      Values must be tab separated and there must be a row for the sample/column
-      labels and a column for the row/gene labels.::
-      
-      	"Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
-      	"27395"		1699	1528	1463	1441	1495
-      	"18777"		1905	1744	1345    1291    1346
-      	"150370"	6	8	4	5	5
-      	"21399"		2099	1974	1574	1519	1654    
-      	"58175"		356	312	347	361	346
-      	"108664"	2528	2438	1762	1942	2027    
-      	"12421"		2182	2005	1786	1799	1858    
-      	"240690"	3	4	2	3	3
-      	"319263"	1337	1380	1004	1102	1000
-      	"71096"		0	0	2	1	6	
-      	"59014"		1466	1426	1296	1097	1175
-      	...
+A matrix of expression level with rows corresponding to particular genes
+and columns corresponding to the feature count in particular samples.
+Values must be tab separated and there must be a row for the sample/column
+labels and a column for the row/gene labels.::
+
+    "Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
+  "27395"		1699	1528	1463	1441	1495
+  "18777"		1905	1744	1345    1291    1346
+  "150370"	6	8	4	5	5
+  "21399"		2099	1974	1574	1519	1654    
+  "58175"		356	312	347	361	346
+  "108664"	2528	2438	1762	1942	2027    
+  "12421"		2182	2005	1786	1799	1858    
+  "240690"	3	4	2	3	3
+  "319263"	1337	1380	1004	1102	1000
+  "71096"		0	0	2	1	6	
+  "59014"		1466	1426	1296	1097	1175
+  ...
 
 
-      NOTE: The column labels look misaligned with the columns due to the
-      presence of row labels, this is read correctly into R which proccesses the
-      data.
+NOTE: The column labels look misaligned with the columns due to the
+presence of row labels, this is read correctly into R which proccesses the
+data.
+
+**Factor Levels**
+
+The levels of your samples seperated by comma, no spaces should
+be present and the order of the levels must correspond to the column order
+of the samples in the input matrix. This input determines the colour of
+the plot where the samples of the same level are given the same colour.
       
-      **Factor Levels**
+**Sample Labels**
       
-      The levels of your samples seperated by comma, no spaces should
-      be present and the order of the levels must correspond to the column order
-      of the samples in the input matrix. This input determines the colour of
-      the plot where the samples of the same level are given the same colour.
+The labels to the samples provided seperated by comma, no spaces 
+should be present and the order of the labels should reflect the column 
+order of the samples in the input matrix. This input determines the label 
+plotted on to the MDS plot and the point corresponding to each sample will
+be that sample's label.
       
-      **Sample Labels**
+**Label Size**
       
-      The labels to the samples provided seperated by comma, no spaces 
-      should be present and the order of the labels should reflect the column 
-      order of the samples in the input matrix. This input determines the label 
-      plotted on to the MDS plot and the point corresponding to each sample will
-      be that sample's label.
-      
-      **Label Size**
-      
-      Scale factor for the size of labels, if the labels are too long in the
-      standard plot then this value should be reduced, if more visibility is
-      desired then this value can be increased. The scaling value is bounded
-      between 0 and 2.
+Scale factor for the size of labels, if the labels are too long in the
+standard plot then this value should be reduced, if more visibility is
+desired then this value can be increased. The scaling value is bounded
+between 0 and 2.
 
     </help>
 </tool>

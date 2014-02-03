@@ -15,7 +15,7 @@ labelData <- unlist(strsplit(as.character(argv[4]), ","))
 labelSize <- as.numeric(argv[5])
 
 # Load in data
-counts <- read.table(countPath)
+counts <- read.table(countPath, header=TRUE, sep="\t")
 
 # Extract counts
 data <- list()

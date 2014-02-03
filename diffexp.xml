@@ -253,19 +253,13 @@ The levels of the factor of interest, this must be entered in the same
 order as the samples to which the levels correspond as listed in the
 columns of the counts matrix. 
 
-.. class:: warningmark
-
 The values should be seperated by commas and spaces must not be used.
 
-**Contrasts of Interest**
+**Contrasts of Interest:**
 The contrasts you wish to make between levels. 
-
-.. class:: infomark
 
 Common contrasts would be a simple difference between two levels: "Mut-WT" 
 represents the difference between the mutant and wild type genotypes.
-
-.. class:: warningmark
 
 The values should be seperated by commas and spaces must not be used.
 
@@ -273,11 +267,9 @@ The values should be seperated by commas and spaces must not be used.
 Option to ignore the genes that do not show significant levels of
 expression, this removes from the counts matrix the rows corresponding to 
 genes that do not express more than some counts per million specified by
-**Minimum CPM** in at least the number of samples specified by **Minimum
+**Minimum CPM:** in at least the number of samples specified by **Minimum
 Samples**. The result is that genes that do not show significant levels of
 expression are treated as unexpressed.
-
-.. class:: warningmark
 
 The sample number requirement should at most be equal to number of samples
 in the level with the least number of samples. ie. if you have 4 levels in
