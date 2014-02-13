@@ -107,7 +107,7 @@
           <param name="cpmReq" type="float" value="0.5" min="0" max="1"
                  label="Minimum CPM"/>
                  
-          <param name="sampleReq" type="integer" value="3" min="0"
+          <param name="sampleReq" type="integer" value="1" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
                        CPM in at least this many samples"/>
@@ -253,7 +253,7 @@ The levels of the factor of interest, this must be entered in the same
 order as the samples to which the levels correspond as listed in the
 columns of the counts matrix. 
 
-The values should be seperated by commas and spaces must not be used.
+The values should be seperated by commas, and spaces must not be used.
 
 **Contrasts of Interest:**
 The contrasts you wish to make between levels. 
@@ -265,16 +265,21 @@ The values should be seperated by commas and spaces must not be used.
 
 **Filter Low CPM:**
 Option to ignore the genes that do not show significant levels of
-expression, this removes from the counts matrix the rows corresponding to 
-genes that do not express more than some counts per million specified by
-**Minimum CPM:** in at least the number of samples specified by **Minimum
-Samples**. The result is that genes that do not show significant levels of
-expression are treated as unexpressed.
+expression, this filtering is dependent on two criteria:
 
-The sample number requirement should at most be equal to number of samples
-in the level with the least number of samples. ie. if you have 4 levels in
-your factor with 2 samples of each level, the value should be reduced from
-the default 3 to 2.
+ * **Minimum CPM:** This is the counts per million that a gene must have in at
+   least some specified number of samples.
+
+ * **Minumum Samples:** This is the number of samples in which the CPM
+   requirement must be met in order for that gene to be acknowledged.
+
+Only genes that exhibit a CPM greater than the required amount in at least the
+number of samples specified will be used for analysis. Care should be taken to
+ensure that the sample requirement is appropriate. In the case of an experiment
+with two experimental groups each with two members, if there is a change from
+insignificant cpm to significant cpm but the sample requirement is set to 3,
+then this will cause that gene to fail the criteria. When in doubt simply do not
+filter.
 
 
 **Normalisation Method:**
