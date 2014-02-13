@@ -6,6 +6,8 @@ timeStart <- as.character(Sys.time())
 
 # Load all required libraries
 library("Rsubread", quietly=TRUE, warn.conflicts=FALSE)
+library("BiocGenerics", quietly=TRUE, warn.conflicts=FALSE)
+library("parallel", quietly=TRUE, warn.conflicts=FALSE)
 library("org.Mm.eg.db", quietly=TRUE, warn.conflicts=FALSE)
 library("org.Hs.eg.db", quietly=TRUE, warn.conflicts=FALSE)
 
@@ -56,7 +58,6 @@ for (i in 1:nrow(fastqData)){
 ################################################################################
 ### Data Processing
 ################################################################################
-
 if (refIndexSource=="history"){
   buildindex(basename="index", reference=refIndex)
   indexName <- "index"
@@ -92,6 +93,23 @@ if (pairMode=="paired"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=TRUE)
 } else if (pairMode=="single"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=FALSE)
+}
+
+addCols <- function(dataframe, indices){
+  if (!is.vector(counts$counts[, indices])){
+    dataframe[, indices[1]] <- rowSums(dataframe[, indices])
+    dataframe <- dataframe[, -indices[2:length(indices)]]
+  }
+  return(dataframe)
+}
+
+uniqueSamples <- unique(nameVec)
+for (i in 1:length(uniqueSamples)){
+  indices <- which(nameVec == uniqueSamples[i])
+  counts$counts <- addCols(counts$counts, indices)
+  if (length(indices)>1){
+    nameVec <- nameVec[-indices[2:length(indices)]]
+  }
 }
 
 write.table(counts$counts, file=countsOut, sep="\t")

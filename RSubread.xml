@@ -1,4 +1,4 @@
-<tool id="Rsubread" name="Rsubread Mapping" version="1.0.1">
+<tool id="Rsubread" name="Rsubread Mapping" version="1.0.2">
   <description>
     Produce table of feature counts using Rsubread.
   </description>
@@ -13,7 +13,11 @@
   </stdio>
 
   <command interpreter="Rscript">
-  RSubread.R  $workMode
+  RSubread.R  <!-- Commented until satisfatory output of bam files becomes
+                   possible, (replaced with "align")
+              $workMode
+              -->
+              align
               $inputFormat
               $refGenome.source
               #if $refGenome.source=="indexed"
@@ -40,10 +44,12 @@
   </command>
 
   <inputs>
+    <!-- Commentil until satisfatory output of bam files becomes possible
     <param name="workMode" type="select" label="Alignment Algorithm">
       <option value="align">Align</option>
       <option value="subjunc">Subjunc</option>
     </param>
+    -->
     
     <param name="inputFormat" type="select" label="Input Data Type">
       <option value="gzFASTQ">Gzipped FastQ</option>
@@ -89,16 +95,16 @@
 
       <when value="single">
         <repeat name="fastq" title="FastQ Files">     
-          <param name="label" type="text" label="Sample Label"/>
-          <param name="group" type="text" label="Experimental Group"/>
+          <param name="label" type="text" size="120" label="Sample Label"/>
+          <param name="group" type="text" size="60" label="Experimental Group"/>
           <param name="file" type="data" format="fastq"/>
         </repeat>
       </when>
 
       <when value="paired">
         <repeat name="fastq" title="FastQ Pairs">
-          <param name="label" type="text" label="Sample Label"/>
-          <param name="group" type="text" label="Experimental Group"/>
+          <param name="label" type="text" size="120" label="Sample Label"/>
+          <param name="group" type="text" size="60" label="Experimental Group"/>
           <param name="pair1" type="data" format="fastq"/>
           <param name="pair2" type="data" format="fastq"/>
         </repeat>
@@ -132,5 +138,59 @@
   </outputs>
 
   <help>
+.. class:: infomark
+
+**What it does**
+
+Given fastq files and a reference genome, this tool will generate a table of
+feature counts along with relevant annotations for the genes.
+
+-----
+
+**Input Data Type**
+
+Give information to the tool regarding whether or not the fastq files are
+gzipped.
+
+**Will you select a reference genome from your history or use a built-in
+index?:**
+
+Option to make use of the indicies made available by the administrator of the 
+Galaxy instance. Alternatively an index may be built using a fasta file from 
+history.
+
+.. class:: infomark
+
+Building an index is very computationally intensive and time consuming. Use
+built in indices whenever possible, contact your Galaxy administrator if you
+believe new indices should be added.
+
+**Genome for Feature Counts:**
+
+Select the reference genome for counting the aligned features, this should
+correspond to the reference genome used for alignment. Currently tool only
+supports mm9, mm10 and hg19 genomes.
+
+**Is this library mate-paired?:**
+
+Option for selecting whether the sequencing has been done on a single end or
+paired end. If pair-end is selected it is expected that every sample is paired
+end.
+
+**FastQ Files:**
+
+ * **Sample Label:**
+   A unique identifier for the particular sample from which the fastq file was
+   sequenced. Multiple fastq files belonging to the same sample label will have
+   their counts added into a single column in the counts table.
+   
+ * **Experimental Group**
+   The experimental group to which the sample belongs.
+
+**Number of Processing Threads:**
+This determines how many processing threads of the CPU will be used in the
+alignment stage of the count summarisation. 2 threads provides a sizable speed
+advantage over 1 threads but additional threads will give diminishing returns
+and will be physically limited by available threads on the processing server.
   </help>
 </tool>
