@@ -113,7 +113,7 @@
           <param name="cpmReq" type="float" value="0.5" min="0" max="1"
                  label="Minimum CPM"/>
                  
-          <param name="sampleReq" type="integer" value="3" min="0"
+          <param name="sampleReq" type="integer" value="1" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
                        CPM in at least this many samples."/>

@@ -451,18 +451,6 @@ HtmlHead("EdgeR Output")
 
 cata("<body>\n")
 cata("<h3>EdgeR Analysis Output:</h3>\n")
-cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format. <br/>\n")
-for (i in 1:nrow(imageData)){
-  if (grepl("barcode", imageData$Link[i])){
-    HtmlImage(imageData$Link[i], imageData$Label[i], 
-              height=length(selectedGenes)*150)
-  } else {
-    HtmlImage(imageData$Link[i], imageData$Label[i])
-  }
-}
-cata("<br/>\n")
-
 cata("<h4>Input Summary:</h4>\n")
 cata("<ul>\n")
 ListItem(hpReadout[1])
@@ -474,6 +462,22 @@ ListItem(hpReadout[4])
 ListItem(hpReadout[7])
 cata("</ul>\n")
 cata(hpReadout[8:11], sep="<br/>\n")
+cata("<br />\n")
+cata("<b>Please check that read percentages are consistent with ")
+cata("expectations.</b>\n")
+
+cata("<h4>Output:</h4>\n")
+cata("All images displayed have PDF copy at the bottom of the page, these can ")
+cata("exported in a pdf viewer to high resolution image format. <br/>\n")
+for (i in 1:nrow(imageData)){
+  if (grepl("barcode", imageData$Link[i])){
+    HtmlImage(imageData$Link[i], imageData$Label[i], 
+              height=length(selectedGenes)*150)
+  } else {
+    HtmlImage(imageData$Link[i], imageData$Label[i])
+  }
+}
+cata("<br/>\n")
 
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)){
