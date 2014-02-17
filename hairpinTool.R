@@ -20,32 +20,40 @@ if(packageVersion("edgeR") < "3.5.23"){
 argv <- commandArgs(TRUE)
 
 # Remove fastq file paths after collecting from argument vector
-fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq", argv)], 
-                               fixed=TRUE))
-argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
-hairpinPath <- as.character(argv[1])
-samplePath <- as.character(argv[2])
-barStart <- as.numeric(argv[3])
-barEnd <- as.numeric(argv[4])
-hpStart <- as.numeric(argv[5])
-hpEnd <- as.numeric(argv[6])
-cpmReq <- as.numeric(argv[7])
-sampleReq <- as.numeric(argv[8])
-fdrThresh <- as.numeric(argv[9])
-lfcThresh <- as.numeric(argv[10])
-workMode <- as.character(argv[11])
-htmlPath <- as.character(argv[12])
-folderPath <- as.character(argv[13])
+inputType <- as.character(argv[1])
+if (inputType=="fastq"){
+  fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq::", argv)], 
+                                 fixed=TRUE))
+  argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
+  hairpinPath <- as.character(argv[2])
+  samplePath <- as.character(argv[3])
+  barStart <- as.numeric(argv[4])
+  barEnd <- as.numeric(argv[5])
+  hpStart <- as.numeric(argv[6])
+  hpEnd <- as.numeric(argv[7])
+} else if (inputType=="counts"){
+  countsPath <- as.character(argv[2])
+  annoPath <- as.character(argv[3])
+  factorData <- as.character(argv[4])
+}
+  
+cpmReq <- as.numeric(argv[8])
+sampleReq <- as.numeric(argv[9])
+fdrThresh <- as.numeric(argv[10])
+lfcThresh <- as.numeric(argv[11])
+workMode <- as.character(argv[12])
+htmlPath <- as.character(argv[13])
+folderPath <- as.character(argv[14])
 if(workMode=="classic"){
   pairData <- character()
-  pairData[2] <- as.character(argv[14])
-  pairData[1] <- as.character(argv[15])
+  pairData[2] <- as.character(argv[15])
+  pairData[1] <- as.character(argv[16])
 } else if (workMode=="glm"){
-  contrastData <- as.character(argv[14])
-  roastOpt <- as.character(argv[15])
-  hairpinReq <- as.numeric(argv[16])
-  selectOpt <- as.character(argv[17])
-  selectVals <- as.character(argv[18])
+  contrastData <- as.character(argv[15])
+  roastOpt <- as.character(argv[16])
+  hairpinReq <- as.numeric(argv[17])
+  selectOpt <- as.character(argv[18])
+  selectVals <- as.character(argv[19])
 }
 
 # Function to sanitise contrast equations so there are no whitespaces
@@ -57,6 +65,12 @@ sanitiseEquation <- function(equation){
   equation <- gsub(" *[*] *", "*", equation)
   equation <- gsub("^\\s+|\\s+$", "", equation)
   return(equation)
+}
+
+# Function to sanitise group information
+sanitiseGroups <- function(string){
+  string <- gsub(" *[,] *", ",", string)
+  string <- gsub("^\\s+|\\s+$", "", string)
 }
 
 # Process arguments
@@ -91,7 +105,7 @@ if (workMode=="glm"){
 }
 
 # Check if grouping variable has been specified
-sampleData <- read.table(samplePath, sep="\t", header=TRUE)
+sampleData <- read.table(samplePath, header=TRUE, sep="\t")
 if(!any(grepl("group", names(sampleData)))){
   stop("'group' column not specified in sample annotation file")
 }
@@ -160,15 +174,15 @@ imageData <- data.frame(Label=character(), Link=character(),
 ### Data Processing
 ################################################################################
 
+if (inputType=="fastq"){
 # Use EdgeR hairpin process and capture outputs
 hpReadout <- capture.output(
   data <- processHairpinReads(fastqPath, samplePath, hairpinPath,
                               hairpinStart=hpStart, hairpinEnd=hpEnd, 
                               verbose=TRUE)
 )
-closeAllConnections()
 
-# Remove entries that show processing data or is empty
+# Remove function output entries that show processing data or is empty
 hpReadout <- hpReadout[hpReadout!=""]
 hpReadout <- hpReadout[!grepl("Processing", hpReadout)]
 hpReadout <- hpReadout[!grepl("in file", hpReadout)]
@@ -177,15 +191,27 @@ hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 
 # Make the names of groups syntactically valid (replace spaces with periods)
 data$samples$group<-make.names(data$samples$group)
+} else {
+  # Read in data tables
+  counts <- read.table(countPath, header=TRUE, sep="\t")
+  anno <- read.table(annoPath, header=TRUE, sep="\t")
+  
+  # Process group information
+  factorData <- sanitiseGroups(factorData)
+  factors <- unlist(strsplit(factorData, ","))
+  factors <- make.names(factors)
+  
+  data <- DGEList(counts=counts, lib.size=colSums(counts), 
+                  norm.factors=rep(1,ncol(counts)), genes=anno, group=factors)
+}
 
 # Filter hairpins with low counts
 sel <- rowSums(cpm(data$counts)>cpmReq)>=sampleReq
 data <- data[sel, ]
 
-# Begin differential representation analysis
 # Estimate dispersions
 data <- estimateDisp(data)
-#sqrt(data$common.dispersion)
+commonBCV <- sqrt(data$common.dispersion)
 
 
 # Plot number of hairpins that could be matched per sample
@@ -464,7 +490,9 @@ cata("</ul>\n")
 cata(hpReadout[8:11], sep="<br/>\n")
 cata("<br />\n")
 cata("<b>Please check that read percentages are consistent with ")
-cata("expectations.</b>\n")
+cata("expectations.</b><br >\n")
+
+cata("The estimated BCV is: ", commonBCV, "<br />\n")
 
 cata("<h4>Output:</h4>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")

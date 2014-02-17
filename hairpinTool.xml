@@ -13,23 +13,31 @@
   </stdio>
   
   <command interpreter="Rscript">
-  hairpinTool.R #for $i, $fas in enumerate($fastq):
-                  fastq::$fas.file
-                #end for
-  
-                $hairpin
-                $samples
-                  
-                #if $positions.option=="yes":
-                  $positions.barstart
-                  $positions.barend
-                  $positions.hpstart
-                  $positions.hpend
+  hairpinTool.R $inputOpt.type
+                #if $inputOpt.type=="fastq":
+                  #for $i, $fas in enumerate($inputOpt.fastq):
+                    fastq::$fas.file
+                  #end for
+    
+                  $inputOpt.hairpin
+                  $inputOpt.samples
+                    
+                  #if $inputOpt.positions.option=="yes":
+                    $inputOpt.positions.barstart
+                    $inputOpt.positions.barend
+                    $inputOpt.positions.hpstart
+                    $inputOpt.positions.hpend
+                  #else:
+                    1
+                    5
+                    37
+                    57
+                  #end if
                 #else:
-                  1
-                  5
-                  37
-                  57
+                  $inputOpt.counts
+                  $inputOpt.anno
+                  $inputOpt.factors
+                  0 0 0
                 #end if
           
                 #if $filterCPM.option=="yes":
@@ -62,51 +70,69 @@
                     0
                   #end if
                 #end if
-          
-                
   </command>
   
   <inputs>
-    <param name="hairpin" type="data" format="tabular" 
-           label="Hairpin Data"/>
-    
-    <param name="samples" type="data" format="tabular" 
-           label="Samples Information"/>
-           
-    <repeat name="fastq" title="FastQ Files">       
-      <param name="file" type="data" format="fastq"/>
-    </repeat>
-        
-    <conditional name="positions">
-      <param name="option" type="select" 
-             label="Specify Barcode and Hairpin Locations?"
-             help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57.">
-        <option value="no" selected="True">No</option>
-        <option value="yes">Yes</option>
+    <conditional name="inputOpt">
+      <param name="type" type="select" label="Input File Type">
+        <option value="fastq">FastQ File</option>
+        <option value="counts">Table of Counts</option>
       </param>
-      
-      <when value="yes">
-        <param name="barstart" type="integer" value="1"
-               label="Barcode Starting Position"/>
-        <param name="barend" type="integer" value="5"
-               label="Barcode Ending Position"/>
+    
+      <when value="fastq">
+        <param name="hairpin" type="data" format="tabular" 
+               label="Hairpin Data"/>
+          
         
-        <param name="hpstart" type="integer" value="37"
-               label="Hairpin Starting Position"/>
-           
-        <param name="hpend" type="integer" value="57"
-               label="Hairpin Ending Position"/>
+        <param name="samples" type="data" format="tabular" 
+               label="Samples Information"/>
+               
+        <repeat name="fastq" title="FastQ Files">       
+          <param name="file" type="data" format="fastq"/>
+        </repeat>
+          
+        <conditional name="positions">
+          <param name="option" type="select" 
+                 label="Specify Barcode and Hairpin Locations?"
+                 help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57.">
+            <option value="no" selected="True">No</option>
+            <option value="yes">Yes</option>
+          </param>
+          
+          <when value="yes">
+            <param name="barstart" type="integer" value="1"
+                   label="Barcode Starting Position"/>
+            <param name="barend" type="integer" value="5"
+                   label="Barcode Ending Position"/>
+            
+            <param name="hpstart" type="integer" value="37"
+                   label="Hairpin Starting Position"/>
+               
+            <param name="hpend" type="integer" value="57"
+                   label="Hairpin Ending Position"/>
+          </when>
+          
+          <when value="no"/>
+        </conditional>
       </when>
       
-      <when value="no"/>
+      <when value="counts">
+        <param name="counts" type="data" format="tabular" label="Counts Table"/>
+        <param name="anno" type="data" format="tabular" 
+               label="Annotations Table"/>
+        <param name="factors" type="text" size="100" label="Group Values"
+               help="The experimental group of each sample in the order that
+                     they appear in the columns of your counts matrix.
+                     Eg. WT,WT,Mut,Mut,WT."/> 
+      </when>
     </conditional>
     
     <conditional name="filterCPM">
       <param name="option" type="select" label="Filter Low CPM?"
-       help="Treat hairpins with very low representation as unexpressed and 
-       			 filter out to speed up computation.">
-        <option value="no" selected="True">No</option>
+       help="Ignore hairpins with very low representation when performing 
+             analysis.">
         <option value="yes">Yes</option>
+       	<option value="no">No</option>
       </param>
       
         <when value="yes">
@@ -142,7 +168,10 @@
       <when value="glm">
         <param name="contrast" type="text" size="60"
                label="Contrasts of interest"
-               help="Eg. Mut-WT, KD-Control"/>
+               help="Specify equations defining contrasts to be made. Eg. 
+                     KD-Control will result in positive fold change is KD has
+                     greater expression and negative if Control has greater
+                     expression."/>
                
         <conditional name="roast">
           <param name="option" type="select" 
