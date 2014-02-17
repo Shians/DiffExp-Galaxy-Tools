@@ -43,6 +43,7 @@ for (i in 1:length(fastqPath)){
   }
 }
 
+# Create table of information regarding fastQ files
 if (pairMode=="single"){
   fastqData <- data.frame(Name=nameVec, Group=groupVec, Path=pathVec1)
 } else if (pairMode=="paired"){
@@ -50,6 +51,7 @@ if (pairMode=="single"){
                           Path2=pathVec2)
 }
 
+# Create file names for intermediary bam files
 filesOut <- character()
 for (i in 1:nrow(fastqData)){
   filesOut[i] <- paste0(fastqData$Name[i], ".bam")
@@ -58,6 +60,8 @@ for (i in 1:nrow(fastqData)){
 ################################################################################
 ### Data Processing
 ################################################################################
+
+# Build index from fasta file if required 
 if (refIndexSource=="history"){
   buildindex(basename="index", reference=refIndex)
   indexName <- "index"
@@ -65,6 +69,7 @@ if (refIndexSource=="history"){
   indexName <- refIndex
 }
 
+# *CURRENTLY UNUSED* Align reads using selected algorithm
 if (workMode == "subjunc"){
   for (i in 1:nrow(fastqData)){
     if (pairMode=="single"){
@@ -89,12 +94,16 @@ if (workMode == "subjunc"){
   }
 }
 
+# Calculated counts from aligned read data
 if (pairMode=="paired"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=TRUE)
 } else if (pairMode=="single"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=FALSE)
 }
 
+# Function to add counts from multiple colums into a single column, removes
+# all but the first specified column which holds the sum of all specified
+# columns
 addCols <- function(dataframe, indices){
   if (!is.vector(counts$counts[, indices])){
     dataframe[, indices[1]] <- rowSums(dataframe[, indices])
@@ -103,6 +112,8 @@ addCols <- function(dataframe, indices){
   return(dataframe)
 }
 
+# Merge columns by sample label, counts belonging to same sample are merged into
+# a single column.
 uniqueSamples <- unique(nameVec)
 for (i in 1:length(uniqueSamples)){
   indices <- which(nameVec == uniqueSamples[i])
@@ -114,6 +125,7 @@ for (i in 1:length(uniqueSamples)){
 
 write.table(counts$counts, file=countsOut, sep="\t")
 
+# Load appropriate annotation database
 if (annoOpt=="hg19"){
   symbs <- toTable(org.Hs.egSYMBOL)
   chr <- toTable(org.Hs.egCHR)
@@ -124,6 +136,7 @@ if (annoOpt=="hg19"){
   chr <- toTable(org.Mm.egCHR)
 }
 
+# Create annotation table
 egids <- counts$anno[,1]
 geneanno <- cbind(counts$anno, 
                   "EntrezID"=egids,

@@ -81,7 +81,8 @@
       </when>
     </conditional>
     
-    <param name="annotation" type="select" label="Genome for Feature Counts">
+    <param name="annotation" type="select" label="Genome for Feature Counts"
+           help="Currently only mm9, mm10 and hg19 genomes are supported">
       <option value="mm9">mm9</option>
       <option value="mm10">mm10</option>
       <option value="hg19">hg19</option>
@@ -95,16 +96,19 @@
 
       <when value="single">
         <repeat name="fastq" title="FastQ Files">     
-          <param name="label" type="text" size="120" label="Sample Label"/>
-          <param name="group" type="text" size="60" label="Experimental Group"/>
+          <param name="label" type="text" size="100" label="Sample Label"
+                 help="Names of replicates should be kept distinct. Only files 
+                       belonging to the same replicate should be assigned an 
+                       identical label. eg. WT-1, WT-2,..."/>
+          <param name="group" type="text" size="30" label="Experimental Group"/>
           <param name="file" type="data" format="fastq"/>
         </repeat>
       </when>
 
       <when value="paired">
         <repeat name="fastq" title="FastQ Pairs">
-          <param name="label" type="text" size="120" label="Sample Label"/>
-          <param name="group" type="text" size="60" label="Experimental Group"/>
+          <param name="label" type="text" size="100" label="Sample Label"/>
+          <param name="group" type="text" size="30" label="Experimental Group"/>
           <param name="pair1" type="data" format="fastq"/>
           <param name="pair2" type="data" format="fastq"/>
         </repeat>
