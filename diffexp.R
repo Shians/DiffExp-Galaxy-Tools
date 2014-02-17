@@ -118,9 +118,9 @@ imageData <- data.frame(Label=character(), Link=character(),
                         stringsAsFactors=FALSE)
 
 # Read in counts and geneanno data
-counts <- read.table(countPath)
+counts <- read.table(countPath, header=TRUE, sep="\t")
 if (haveAnno){
-  geneanno <- read.table(annoPath)
+  geneanno <- read.table(annoPath, header=TRUE, sep="\t")
 }
 
 ################################################################################

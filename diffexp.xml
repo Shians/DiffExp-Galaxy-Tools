@@ -117,16 +117,6 @@
         
     </conditional>
        
-    <param name="normalisationOption" type="select" 
-           label="Normalisation Method">
-           
-      <option value="TMM">TMM</option>
-      <option value="RLE">RLE</option>
-      <option value="upperquartile">Upperquartile</option>
-      <option value="none">None (Don't normalise)</option>
-      
-    </param>
-    
     <conditional name="weightCond">
       <param name="weightOption" type="select" label="Apply sample weights?"
              display="radio" help="Apply weights if outliers are present">
@@ -136,6 +126,16 @@
         
       </param>
     </conditional>
+    
+    <param name="normalisationOption" type="select" 
+           label="Normalisation Method">
+           
+      <option value="TMM">TMM</option>
+      <option value="RLE">RLE</option>
+      <option value="upperquartile">Upperquartile</option>
+      <option value="none">None (Don't normalise)</option>
+      
+    </param>
     			 
     <conditional name="testOpt">
       <param name="wantOpt" type="select" label="Use Advanced Testing Options?"
