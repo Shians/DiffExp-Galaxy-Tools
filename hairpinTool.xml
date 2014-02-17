@@ -36,7 +36,7 @@
                 #else:
                   $inputOpt.counts
                   $inputOpt.anno
-                  $inputOpt.factors
+                  "$inputOpt.factors"
                   0 0 0
                 #end if
           
@@ -81,11 +81,11 @@
     
       <when value="fastq">
         <param name="hairpin" type="data" format="tabular" 
-               label="Hairpin Data"/>
+               label="Hairpin Annotation"/>
           
         
         <param name="samples" type="data" format="tabular" 
-               label="Samples Information"/>
+               label="Sample Annotation"/>
                
         <repeat name="fastq" title="FastQ Files">       
           <param name="file" type="data" format="fastq"/>
@@ -119,10 +119,10 @@
       <when value="counts">
         <param name="counts" type="data" format="tabular" label="Counts Table"/>
         <param name="anno" type="data" format="tabular" 
-               label="Annotations Table"/>
+               label="Hairpin Annotation"/>
         <param name="factors" type="text" size="100" label="Group Values"
                help="The experimental group of each sample in the order that
-                     they appear in the columns of your counts matrix.
+                     they appear in the columns of your counts table.
                      Eg. WT,WT,Mut,Mut,WT."/> 
       </when>
     </conditional>
@@ -169,7 +169,7 @@
         <param name="contrast" type="text" size="60"
                label="Contrasts of interest"
                help="Specify equations defining contrasts to be made. Eg. 
-                     KD-Control will result in positive fold change is KD has
+                     KD-Control will result in positive fold change if KD has
                      greater expression and negative if Control has greater
                      expression."/>
                
@@ -251,11 +251,38 @@ representation.
 
 **INPUTS**
 
-**Hairpin Data**
+**Input File Type:**
+
+This tool is able to either generate counts from a raw FastQ file given the
+information regarding the samples and hairpins. Alternatively if a table of
+counts has already been generated it can also be used.
+
+**Counts Table (Counts Input):**
+
+A tab delimited text table of information regarding the counts of hairpins.
+Should have a column 'ID' to denote the hairpins that counts correspond to. Each
+additional column should have titles corresponding to the label for the sample.
+
+Example::
+
+  ID  Sample1 Sample2 Sample3
+  Control1 49802 48014 40148
+  Control2 12441 16352 14232
+  Control3 9842  9148  9111
+  Hairpin1 3300  3418  2914
+  Hairpin2 91418 95812 93174
+  Hairpin3 32985 31975 35104
+  Hairpin4 12082 14081 14981
+  Hairpin5 2491  2769  2691
+  Hairpin6 1294  1486  1642
+  Hairpin7 49501 49076 47611
+  ...
+  
+**Hairpin Annotation:**
 
 A tab delimited text table of information regarding the hairpins. Should have
-columns ID, Sequence and Gene to uniquely identify the hairpin, align it with
-the reads to produce counts and identify which gene the hairpin acts on.
+columns 'ID', 'Sequences' and 'Gene' to uniquely identify the hairpin, align it
+with the reads to produce counts and identify which gene the hairpin acts on.
 
 NOTE: the column names are case sensitive and should be input exactly as they
 are shown here.
@@ -274,14 +301,14 @@ Example::
   Hairpin6	CCAGGCACAGATCTCAAGATA	4
   Hairpin7	ATGACAAGAAAGACATCTCAA	7
   ...
-
-**Samples Information**
+  
+**Sample Annotation (FastQ Input):**
 
 A tab delimited text table of information regarding the samples. Should have
-columns ID, Sequence and group to uniquely identify each sample, identify the
-sample in the reads by its barcode sequence and correctly group replicates for
-analysis. Additional columns may inserted for annotation purposes and will not
-interfere with analysis as long as the necessary columns are present.
+columns 'ID', 'Sequences' and 'group' to uniquely identify each sample, identify
+the sample in the reads by its barcode sequence and correctly group replicates
+for analysis. Additional columns may inserted for annotation purposes and will
+not interfere with analysis as long as the necessary columns are present.
 
 NOTE: the column names are case sensitive and should be input exactly as they
 are shown here.
@@ -301,20 +328,20 @@ Example::
   40	GAGCT	Day 10	3
   ...
   
-**Specify Barcode and Hairpin Locations**
+**Specify Barcode and Hairpin Locations (FastQ Input):**
 
 It is assumed that in the sequencing reads that the first 5 bases are the
 barcodes and that bases 37-57 are the hairpins. If this is not the case then the
 values of the positions can be changed, however it still requires the barcodes
 and hairpins to be in a consistent location an in a continuous sequence.
 
-**Filter Low CPM**
+**Filter Low CPM?:**
 
 Often in a large screen there may members with very low counts which are of no
 interest in the experiment, these may be filtered out to speed up computations.
 Filtering will be based on counts per million in a required number of samples.
 
-**Analysis Type**
+**Analysis Type:**
 
  * **Classic Exact Test:** This allows two experimental groups to be compared and
    p-values for differential representation derivec for each hairpin. Simple and
@@ -329,7 +356,7 @@ Filtering will be based on counts per million in a required number of samples.
    basis to see if hairpins belonging to a particular gene have any overall
    tendencies for the direction of their log-fold-change.
 
-**FDR Threshold**
+**FDR Threshold:**
 The smear plot in the output will have hairpins highlighted to signify
 significant differential representation. The significance is determined by
 contorlling the false discovery rate, only those with a FDR lower than the

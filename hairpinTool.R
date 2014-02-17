@@ -32,7 +32,7 @@ if (inputType=="fastq"){
   hpStart <- as.numeric(argv[6])
   hpEnd <- as.numeric(argv[7])
 } else if (inputType=="counts"){
-  countsPath <- as.character(argv[2])
+  countPath <- as.character(argv[2])
   annoPath <- as.character(argv[3])
   factorData <- as.character(argv[4])
 }
@@ -104,10 +104,15 @@ if (workMode=="glm"){
   }
 }
 
-# Check if grouping variable has been specified
-sampleData <- read.table(samplePath, header=TRUE, sep="\t")
-if(!any(grepl("group", names(sampleData)))){
-  stop("'group' column not specified in sample annotation file")
+# Safeguard inputs
+if (inputType=="fastq"){
+  # Check if grouping variable has been specified
+  sampleData <- read.table(samplePath, header=TRUE, sep="\t")
+  if(!any(grepl("group", names(sampleData)))){
+    stop("'group' column not specified in sample annotation file")
+  }
+} else if (inputType=="counts"){
+  
 }
 
 # Split up contrasts seperated by comma into a vector and replace spaces with
@@ -190,23 +195,25 @@ hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 
 
 # Make the names of groups syntactically valid (replace spaces with periods)
-data$samples$group<-make.names(data$samples$group)
+data$samples$group <- make.names(data$samples$group)
 } else {
   # Read in data tables
   counts <- read.table(countPath, header=TRUE, sep="\t")
+  rownames(counts) <- counts$ID
+  counts <- counts[ , !(colnames(counts)=="ID")]
   anno <- read.table(annoPath, header=TRUE, sep="\t")
   
   # Process group information
   factorData <- sanitiseGroups(factorData)
   factors <- unlist(strsplit(factorData, ","))
-  factors <- make.names(factors)
+  factors <- gsub(" ", ".", factors)
   
   data <- DGEList(counts=counts, lib.size=colSums(counts), 
                   norm.factors=rep(1,ncol(counts)), genes=anno, group=factors)
 }
 
 # Filter hairpins with low counts
-sel <- rowSums(cpm(data$counts)>cpmReq)>=sampleReq
+sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data <- data[sel, ]
 
 # Estimate dispersions
@@ -274,7 +281,7 @@ if (workMode=="classic"){
   
   top <- topTags(testData, n=Inf)
   topIDs <- top$table[(top$table$FDR < fdrThresh) &
-                      (top$table$logFC > lfcThresh), 1]
+                      (abs(top$table$logFC) > lfcThresh), 1]
   write.table(top, file=topOut, row.names=FALSE, sep="\t")
   linkName <- paste0("Top Tags Table(", pairData[2], "-", pairData[1], 
                      ") (.tsv)")
@@ -326,7 +333,7 @@ if (workMode=="classic"){
     # Select hairpins with FDR < 0.05 to highlight on plot
     top <- topTags(testData, n=Inf)
     topIDs <- top$table[(top$table$FDR < fdrThresh) &
-                        (top$table$logFC > lfcThresh), 1]
+                        (abs(top$table$logFC) > lfcThresh), 1]
     write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
     
     linkName <- paste0("Top Tags Table(", contrastData[i], ") (.tsv)")
@@ -478,21 +485,29 @@ HtmlHead("EdgeR Output")
 cata("<body>\n")
 cata("<h3>EdgeR Analysis Output:</h3>\n")
 cata("<h4>Input Summary:</h4>\n")
-cata("<ul>\n")
-ListItem(hpReadout[1])
-ListItem(hpReadout[2])
-cata("</ul>\n")
-cata(hpReadout[3], "<br/>\n")
-cata("<ul>\n")
-ListItem(hpReadout[4])
-ListItem(hpReadout[7])
-cata("</ul>\n")
-cata(hpReadout[8:11], sep="<br/>\n")
-cata("<br />\n")
-cata("<b>Please check that read percentages are consistent with ")
-cata("expectations.</b><br >\n")
+if (inputType=="fastq"){
+  cata("<ul>\n")
+  ListItem(hpReadout[1])
+  ListItem(hpReadout[2])
+  cata("</ul>\n")
+  cata(hpReadout[3], "<br/>\n")
+  cata("<ul>\n")
+  ListItem(hpReadout[4])
+  ListItem(hpReadout[7])
+  cata("</ul>\n")
+  cata(hpReadout[8:11], sep="<br/>\n")
+  cata("<br />\n")
+  cata("<b>Please check that read percentages are consistent with ")
+  cata("expectations.</b><br >\n")
+} else if (inputType=="counts"){
+  cata("<ul>\n")
+  ListItem("Number of Samples: ", ncol(data$counts))
+  ListItem("Number of Hairpins: ", nrow(data$counts))
+  cata("</ul>\n")
+}
 
-cata("The estimated BCV is: ", commonBCV, "<br />\n")
+cata("The estimated common biological coefficient of variation (BCV) is: ", 
+     commonBCV, "<br />\n")
 
 cata("<h4>Output:</h4>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
