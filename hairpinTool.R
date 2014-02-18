@@ -222,6 +222,12 @@ data$samples$group <- make.names(data$samples$group)
 } else {
   # Read in annotations
   anno <- read.table(annoPath, header=TRUE, sep="\t")
+  anno <- anno[match(rownames(counts), anno$ID), ]
+  if (any(is.na(anno$ID))){
+    warningStr <- paste("count table contained more hairpins than",
+                        "specified in hairpin annotation file")
+    warning(warningStr)
+  }
   
   # Filter out rows with zero counts
   sel <- rowSums(counts)!=0
@@ -317,7 +323,7 @@ if (workMode=="classic"){
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
-  plotSmear(data, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+  plotSmear(testData, de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ")")
@@ -329,7 +335,7 @@ if (workMode=="classic"){
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
-  plotSmear(data, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+  plotSmear(testData, de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ") (.pdf)")
@@ -368,7 +374,7 @@ if (workMode=="classic"){
     png(smearPng[i], height=600, width=600)
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(data, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     imgName <- paste0("Smear Plot(", contrastData[i], ")")
@@ -379,7 +385,7 @@ if (workMode=="classic"){
     pdf(smearPdf[i])
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(data, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
+    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     linkName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
