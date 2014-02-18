@@ -34,7 +34,7 @@ if (inputType=="fastq"){
 } else if (inputType=="counts"){
   countPath <- as.character(argv[2])
   annoPath <- as.character(argv[3])
-  factorData <- as.character(argv[4])
+  samplePath <- as.character(argv[4])
 }
   
 cpmReq <- as.numeric(argv[8])
@@ -104,15 +104,36 @@ if (workMode=="glm"){
   }
 }
 
-# Safeguard inputs
+# Check inputs for required data
 if (inputType=="fastq"){
   # Check if grouping variable has been specified
-  sampleData <- read.table(samplePath, header=TRUE, sep="\t")
-  if(!any(grepl("group", names(sampleData)))){
+  samples <- read.table(samplePath, header=TRUE, sep="\t")
+  if(!any(grepl("group", names(samples)))){
     stop("'group' column not specified in sample annotation file")
   }
 } else if (inputType=="counts"){
+  # Read in and check sample annotation
+  samples <- read.table(samplePath, header=TRUE, sep="\t")
   
+  if(!any(grepl("group", names(samples)))){
+    stop("'group' column not specified in sample annotation file")
+  }
+  
+  # Read in and process count information
+  counts <- read.table(countPath, header=TRUE, sep="\t")
+  rownames(counts) <- counts$ID
+  counts <- counts[ , !(colnames(counts)=="ID")]
+  
+  # Process and check group information
+  if (all(samples$ID==colnames(counts))){
+    factors <- samples$group
+  } else {
+    if (anyMissing(match(samples$ID, colnames(counts)))){
+      stop("not all samples have groups specified")
+    } else {
+      factors <- samples$group[match(samples$ID, colnames(counts))]
+    }
+  }
 }
 
 # Split up contrasts seperated by comma into a vector and replace spaces with
@@ -144,6 +165,7 @@ imgOut <- function(filename){
          envir = .GlobalEnv)
 }
 
+# Generate links for outputs
 imgOut("barHairpin")
 imgOut("barIndex")
 imgOut("mds")
@@ -197,19 +219,20 @@ hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 # Make the names of groups syntactically valid (replace spaces with periods)
 data$samples$group <- make.names(data$samples$group)
 } else {
-  # Read in data tables
-  counts <- read.table(countPath, header=TRUE, sep="\t")
-  rownames(counts) <- counts$ID
-  counts <- counts[ , !(colnames(counts)=="ID")]
+  # Read in annotations
   anno <- read.table(annoPath, header=TRUE, sep="\t")
   
-  # Process group information
-  factorData <- sanitiseGroups(factorData)
-  factors <- unlist(strsplit(factorData, ","))
-  factors <- gsub(" ", ".", factors)
+  # Filter out rows with zero counts
+  sel <- rowSums(counts)!=0
+  counts <- counts[sel, ]
+  anno <- anno[sel, ]
   
+  # Create DGEList
   data <- DGEList(counts=counts, lib.size=colSums(counts), 
                   norm.factors=rep(1,ncol(counts)), genes=anno, group=factors)
+ 
+  # Make the names of groups syntactically valid (replace spaces with periods)
+  data$samples$group <- make.names(data$samples$group)
 }
 
 # Filter hairpins with low counts

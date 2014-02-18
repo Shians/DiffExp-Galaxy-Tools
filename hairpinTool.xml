@@ -120,10 +120,8 @@
         <param name="counts" type="data" format="tabular" label="Counts Table"/>
         <param name="anno" type="data" format="tabular" 
                label="Hairpin Annotation"/>
-        <param name="factors" type="text" size="100" label="Group Values"
-               help="The experimental group of each sample in the order that
-                     they appear in the columns of your counts table.
-                     Eg. WT,WT,Mut,Mut,WT."/> 
+        <param name="factors" type="data" format="tabular"
+               label="Sample Annotation"/> 
       </when>
     </conditional>
     
