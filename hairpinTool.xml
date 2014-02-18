@@ -1,4 +1,4 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.3">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.4">
   <description>
     Analyse hairpin differential representation using edgeR
   </description>
@@ -44,8 +44,8 @@
                   $filterCPM.cpmReq
                   $filterCPM.sampleReq
                 #else:
-                  0
-                  0
+                  -Inf
+                  -Inf
                 #end if
           
                 $fdr

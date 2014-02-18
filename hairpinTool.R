@@ -114,6 +114,7 @@ if (inputType=="fastq"){
 } else if (inputType=="counts"){
   # Read in and check sample annotation
   samples <- read.table(samplePath, header=TRUE, sep="\t")
+  samples$ID <- make.names(samples$ID)
   
   if(!any(grepl("group", names(samples)))){
     stop("'group' column not specified in sample annotation file")
@@ -128,7 +129,7 @@ if (inputType=="fastq"){
   if (all(samples$ID==colnames(counts))){
     factors <- samples$group
   } else {
-    if (anyMissing(match(samples$ID, colnames(counts)))){
+    if (any(is.na(match(samples$ID, colnames(counts))))){
       stop("not all samples have groups specified")
     } else {
       factors <- samples$group[match(samples$ID, colnames(counts))]
@@ -230,7 +231,7 @@ data$samples$group <- make.names(data$samples$group)
   # Create DGEList
   data <- DGEList(counts=counts, lib.size=colSums(counts), 
                   norm.factors=rep(1,ncol(counts)), genes=anno, group=factors)
- 
+                  
   # Make the names of groups syntactically valid (replace spaces with periods)
   data$samples$group <- make.names(data$samples$group)
 }
@@ -316,7 +317,7 @@ if (workMode=="classic"){
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
-  plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+  plotSmear(data, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ")")
@@ -328,7 +329,7 @@ if (workMode=="classic"){
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
                     fixed = TRUE)
-  plotSmear(testData, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
+  plotSmear(data, pair=c(pairData[1], pairData[2]), de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
   abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ") (.pdf)")
@@ -367,7 +368,7 @@ if (workMode=="classic"){
     png(smearPng[i], height=600, width=600)
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
+    plotSmear(data, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     imgName <- paste0("Smear Plot(", contrastData[i], ")")
@@ -378,7 +379,7 @@ if (workMode=="classic"){
     pdf(smearPdf[i])
     plotTitle <- paste("Smear Plot:", gsub(".", " ", contrastData[i], 
                        fixed=TRUE))
-    plotSmear(testData, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
+    plotSmear(data, de.tags=topIDs, pch=20, cex=0.8, main=plotTitle)
     abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
     
     linkName <- paste0("Smear Plot(", contrastData[i], ") (.pdf)")
