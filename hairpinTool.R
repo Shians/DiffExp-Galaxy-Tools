@@ -297,10 +297,14 @@ data$samples$group <- make.names(data$samples$group)
   # Process counts information, set ID column to be row names
   rownames(counts) <- counts$ID
   counts <- counts[ , !(colnames(counts)=="ID")]
+  countsRows <- nrow(counts)
   
   # Process group information
   factors <- samples$group[match(samples$ID, colnames(counts))]
+  annoRows <- nrow(anno)
   anno <- anno[match(rownames(counts), anno$ID), ]
+  annoMatched <- sum(!is.na(anno$ID))
+  
   if (any(is.na(anno$ID))) {
     warningStr <- paste("count table contained more hairpins than",
                         "specified in hairpin annotation file")
@@ -562,7 +566,9 @@ if (inputType=="fastq") {
 } else if (inputType=="counts") {
   cata("<ul>\n")
   ListItem("Number of Samples: ", ncol(data$counts))
-  ListItem("Number of Hairpins: ", nrow(data$counts))
+  ListItem("Number of Hairpins: ", countsRows)
+  ListItem("Number of annotations provided: ", annoRows)
+  ListItem("Number of annotations matched to hairpin: ", annoMatched)
   cata("</ul>\n")
 }
 
