@@ -506,9 +506,12 @@ if (workMode=="classic") {
         selectedGenes <- selectVals
       }
       
-      
-      png(barcodePng[i], width=600, height=length(selectedGenes)*150)
-      par(mfrow= c(length(selectedGenes), 1))
+      if (packageVersion("limma")<"3.19.19") {
+        png(barcodePng[i], width=600, height=length(selectedGenes)*150)
+      } else {
+        png(barcodePng[i], width=600, height=length(selectedGenes)*300)
+      }
+      par(mfrow=c(length(selectedGenes), 1))
       for (gene in selectedGenes) {
         barcodeplot(testData$table$logFC, index=geneList[[gene]],
                     main=paste("Barcode Plot for", gene, "(logFCs)", 
@@ -519,8 +522,11 @@ if (workMode=="classic") {
       imgAddr <- paste0("barcode(", contrastData[i], ").png")
       imageData <- rbind(imageData, c(imgName, imgAddr))
       dev.off()
-      
-      pdf(barcodePdf[i], width=8, height=2)
+      if (packageVersion("limma")<"3.19.19") {
+        pdf(barcodePdf[i], width=8, height=2)
+      } else {
+        pdf(barcodePdf[i], width=8, height=4)
+      }
       for (gene in selectedGenes) {
         barcodeplot(testData$table$logFC, index=geneList[[gene]],
                     main=paste("Barcode Plot for", gene, "(logFCs)", 
@@ -580,8 +586,13 @@ cata("All images displayed have PDF copy at the bottom of the page, these can ")
 cata("exported in a pdf viewer to high resolution image format. <br/>\n")
 for (i in 1:nrow(imageData)) {
   if (grepl("barcode", imageData$Link[i])) {
-    HtmlImage(imageData$Link[i], imageData$Label[i], 
-              height=length(selectedGenes)*150)
+    if (packageVersion("limma")<"3.19.19") {
+      HtmlImage(imageData$Link[i], imageData$Label[i], 
+                height=length(selectedGenes)*150)
+    } else {
+      HtmlImage(imageData$Link[i], imageData$Label[i], 
+                height=length(selectedGenes)*300)
+    }
   } else {
     HtmlImage(imageData$Link[i], imageData$Label[i])
   }
