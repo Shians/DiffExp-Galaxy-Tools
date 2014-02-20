@@ -509,7 +509,7 @@ if (workMode=="classic") {
       if (packageVersion("limma")<"3.19.19") {
         png(barcodePng[i], width=600, height=length(selectedGenes)*150)
       } else {
-        png(barcodePng[i], width=600, height=length(selectedGenes)*375)
+        png(barcodePng[i], width=600, height=length(selectedGenes)*300)
       }
       par(mfrow=c(length(selectedGenes), 1))
       for (gene in selectedGenes) {
@@ -525,7 +525,7 @@ if (workMode=="classic") {
       if (packageVersion("limma")<"3.19.19") {
         pdf(barcodePdf[i], width=8, height=2)
       } else {
-        pdf(barcodePdf[i], width=8, height=5)
+        pdf(barcodePdf[i], width=8, height=4)
       }
       for (gene in selectedGenes) {
         barcodeplot(testData$table$logFC, index=geneList[[gene]],
@@ -591,7 +591,7 @@ for (i in 1:nrow(imageData)) {
                 height=length(selectedGenes)*150)
     } else {
       HtmlImage(imageData$Link[i], imageData$Label[i], 
-                height=length(selectedGenes)*375)
+                height=length(selectedGenes)*300)
     }
   } else {
     HtmlImage(imageData$Link[i], imageData$Label[i])
