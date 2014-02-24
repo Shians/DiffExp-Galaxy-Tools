@@ -170,10 +170,6 @@ if (any(table(samples$ID)>1)){
        offenders, " are repeated")
 } # Check that IDs in sample annotation are unique
 
-if (any(is.na(match(samples$ID, colnames(counts))))) {
-  stop("not all samples have groups specified")
-} # Check that a group has be specifed for each sample
-
 if (inputType=="fastq") {
 
   if (any(table(hairpins$ID)>1)){
@@ -182,8 +178,11 @@ if (inputType=="fastq") {
     stop("ID column of hairpin annotation must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in hairpin annotation are unique
-
+  
 } else if (inputType=="counts") {
+  if (any(is.na(match(samples$ID, colnames(counts))))) {
+    stop("not all samples have groups specified")
+  } # Check that a group has be specifed for each sample
   
   if (any(table(counts$ID)>1)){
     tab <- table(counts$ID)
@@ -293,7 +292,7 @@ hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
 
 # Make the names of groups syntactically valid (replace spaces with periods)
 data$samples$group <- make.names(data$samples$group)
-} else {
+} else if (inputType=="counts") {
   # Process counts information, set ID column to be row names
   rownames(counts) <- counts$ID
   counts <- counts[ , !(colnames(counts)=="ID")]
