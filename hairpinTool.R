@@ -1,3 +1,51 @@
+# ARGS: 1.inputType         -String specifying format of input (fastq or table)
+#    IF inputType is "fastQ":
+#       2*.fastqPath        -One or more strings specifying path to fastq files
+#       2.hairpinPath       -String specifying path to hairpin annotation table
+#       3.samplePath        -String specifying path to sample annotation table
+#       4.barStart          -Integer specifying starting position of barcode
+#       5.barEnd            -Integer specifying ending position of barcode
+#       6.hpStart           -Integer specifying startins position of hairpin
+#                            unique region
+#       7.hpEnd             -Integer specifying ending position of hairpin
+#                            unique region
+#    ###   
+#    IF inputType is "counts":
+#       2.countPath         -String specifying path to count table
+#       3.annoPath          -String specifying path to hairpin annotation table
+#       4.samplePath        -String specifying path to sample annotation table
+#    ###
+#       8.cpmReq            -Float specifying cpm requirement
+#       9.sampleReq         -Integer specifying cpm requirement
+#       10.fdrThresh        -Float specifying the FDR requirement
+#       11.lfcThresh        -Float specifying the log-fold-change requirement
+#       12.workMode         -String specifying exact test or GLM usage
+#       13.htmlPath         -String specifying path to HTML file
+#       14.folderPath       -STring specifying path to folder for output
+#    IF workMode is "classic" (exact test)
+#       15.pairData[2]      -String specifying first group for exact test
+#       16.pairData[1]      -String specifying second group for exact test
+#    ###
+#    IF workMode is "glm"
+#       15.contrastData     -String specifying contrasts to be made
+#       16.roastOpt         -String specifying usage of gene-wise tests
+#       17.hairpinReq       -String specifying hairpin requirement for gene-
+#                            wise test
+#       18.selectOpt        -String specifying type of selection for barcode
+#                            plots
+#       19.selectVals       -String specifying members selected for barcode
+#                            plots
+#
+# OUT:  Bar Plot of Counts Per Index
+#       Bar Plot of Counts Per Hairpin
+#       MDS Plot
+#       Smear Plot
+#       Barcode Plots (If Genewise testing was selected)
+#       Top Expression Table
+#       HTML file linking to the ouputs
+#
+# Author: Shian Su - registertonysu@gmail.com - Jan 2014
+
 # Record starting time
 timeStart <- as.character(Sys.time())
 
@@ -166,18 +214,27 @@ if (any(table(samples$ID)>1)){
   tab <- table(samples$ID)
   offenders <- paste(names(tab[tab>1]), collapse=", ")
   offenders <- unmake.names(offenders)
-  stop("ID column of sample annotation must have unique values, values ",
+  stop("'ID' column of sample annotation must have unique values, values ",
        offenders, " are repeated")
 } # Check that IDs in sample annotation are unique
 
 if (inputType=="fastq") {
-
+  
   if (any(table(hairpins$ID)>1)){
     tab <- table(hairpins$ID)
     offenders <- paste(names(tab[tab>1]), collapse=", ")
-    stop("ID column of hairpin annotation must have unique values, values ",
+    stop("'ID' column of hairpin annotation must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in hairpin annotation are unique
+  if (workMode=="glm") {
+    if (roastOpt == "yes") {
+      if (is.na(match("Gene", colnames(hairpins)))) {
+        tempStr <- paste("Gene-wise tests selected but 'Gene' column not",
+        "specified in hairpin annotation file")
+        stop(tempStr)
+      }
+    }
+  }
   
 } else if (inputType=="counts") {
   if (any(is.na(match(samples$ID, colnames(counts))))) {
@@ -187,10 +244,20 @@ if (inputType=="fastq") {
   if (any(table(counts$ID)>1)){
     tab <- table(counts$ID)
     offenders <- paste(names(tab[tab>1]), collapse=", ")
-    stop("ID column of count table must have unique values, values ",
+    stop("'ID' column of count table must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in count table are unique
+  if (workMode=="glm") {
+    if (roastOpt == "yes") {
+      if (is.na(match("Gene", colnames(anno)))) {
+        tempStr <- paste("Gene-wise tests selected but'Gene' column not",
+        "specified in hairpin annotation file")
+        stop(tempStr)
+      }
+    }
+  }
 }
+
 ################################################################################
 
 # Process arguments
@@ -276,22 +343,21 @@ if (workMode=="glm") {
 }
                                                   
 if (inputType=="fastq") {
-# Use EdgeR hairpin process and capture outputs
-hpReadout <- capture.output(
+  # Use EdgeR hairpin process and capture outputs
+  hpReadout <- capture.output(
   data <- processHairpinReads(fastqPath, samplePath, hairpinPath,
                               hairpinStart=hpStart, hairpinEnd=hpEnd, 
                               verbose=TRUE)
-)
-
-# Remove function output entries that show processing data or is empty
-hpReadout <- hpReadout[hpReadout!=""]
-hpReadout <- hpReadout[!grepl("Processing", hpReadout)]
-hpReadout <- hpReadout[!grepl("in file", hpReadout)]
-hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
-
-
-# Make the names of groups syntactically valid (replace spaces with periods)
-data$samples$group <- make.names(data$samples$group)
+  )
+  
+  # Remove function output entries that show processing data or is empty
+  hpReadout <- hpReadout[hpReadout!=""]
+  hpReadout <- hpReadout[!grepl("Processing", hpReadout)]
+  hpReadout <- hpReadout[!grepl("in file", hpReadout)]
+  hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
+  
+  # Make the names of groups syntactically valid (replace spaces with periods)
+  data$samples$group <- make.names(data$samples$group)
 } else if (inputType=="counts") {
   # Process counts information, set ID column to be row names
   rownames(counts) <- counts$ID
@@ -318,7 +384,7 @@ data$samples$group <- make.names(data$samples$group)
   # Create DGEList
   data <- DGEList(counts=counts, lib.size=colSums(counts), 
                   norm.factors=rep(1,ncol(counts)), genes=anno, group=factors)
-                  
+  
   # Make the names of groups syntactically valid (replace spaces with periods)
   data$samples$group <- make.names(data$samples$group)
 }
@@ -618,6 +684,41 @@ cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
 cata("<table border=\"0\">\n")
+
+cit <- character()
+link <-character()
+link[1] <- paste0("<a href=\"",
+                  "http://www.bioconductor.org/packages/release/bioc/",
+                  "vignettes/limma/inst/doc/usersguide.pdf",
+                  "\">", "limma User's Guide", "</a>.")
+link[2] <- paste0("<a href=\"",
+                  "http://www.bioconductor.org/packages/release/bioc/",
+                  "vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf",
+                  "\">", "edgeR User's Guide", "</a>")
+                  
+cit[1] <- paste("Robinson MD, McCarthy DJ and Smyth GK (2010).",
+                "edgeR: a Bioconductor package for differential",
+                "expression analysis of digital gene expression",
+                "data. Bioinformatics 26, 139-140")
+cit[2] <- paste("Robinson MD and Smyth GK (2007). Moderated statistical tests",
+                "for assessing differences in tag abundance. Bioinformatics",
+                "23, 2881-2887")
+cit[3] <- paste("Robinson MD and Smyth GK (2008). Small-sample estimation of",
+                "negative binomial dispersion, with applications to SAGE data.",
+                "Biostatistics, 9, 321-332")
+
+cit[4] <- paste("McCarthy DJ, Chen Y and Smyth GK (2012). Differential",
+                "expression analysis of multifactor RNA-Seq experiments with",
+                "respect to biological variation. Nucleic Acids Research 40,",
+                "4288-4297")
+
+cata("<h4>Citations</h4>")
+cata("<ol>\n")
+ListItem(cit[1])
+ListItem(cit[2])
+ListItem(cit[3])
+ListItem(cit[4])
+cata("</ol>\n")
 
 cata("<tr>\n")
 TableItem("Task started at:"); TableItem(timeStart)

@@ -36,7 +36,7 @@
                 #else:
                   $inputOpt.counts
                   $inputOpt.anno
-                  "$inputOpt.factors"
+                  $inputOpt.factors
                   0 0 0
                 #end if
           
@@ -232,7 +232,18 @@
   <outputs>
     <data format="html" name="outFile" label="shRNAseq Analysis"/>
   </outputs>
-  
+  <!-- Tests under construction
+  <tests>
+    <test>
+      <param name="counts" value="zuber_count.txt"/>
+      <param name="anno" value="zuber_anno.txt"/>
+      <param name="factors" value="zuber_samples.txt"/>
+      <param name="fdr" value="0.05"/>
+      <output name="output" file="shRNAseq_Analysis_html" lines_diff="50"/>
+    </test>
+    
+  </tests>
+  -->
   <help>
 .. class:: infomark
 
