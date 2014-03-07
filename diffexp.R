@@ -12,7 +12,10 @@
 #       8.contrastData    -String containing contrasts of interest
 #       9.cpmReq          -Float specifying cpm requirement
 #       10.sampleReq      -Integer specifying cpm requirement
-#       11.factorData     -String containing factor names and values
+#       11.pAdjOpt        -String specifying the p-value adjustment method
+#       12.pValReq        -Float specifying the p-value requirement
+#       13.lfcReq         -Float specifying the log-fold-change requirement
+#       14.factorData     -String containing factor names and values
 #
 # OUT:  Voom Plot
 #       BCV Plot
@@ -21,11 +24,6 @@
 #       HTML file linking to the ouputs
 #
 # Author: Shian Su - registertonysu@gmail.com - Jan 2014
-
-
-################################################################################
-### Input Processing
-################################################################################
 
 # Record starting time
 timeStart <- as.character(Sys.time())
@@ -36,6 +34,97 @@ library(statmod, quietly=TRUE, warn.conflicts=FALSE)
 library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
+
+################################################################################
+### Function Delcaration
+################################################################################
+# Function to sanitise contrast equations so there are no whitespaces
+# surrounding the arithmetic operators, leading or trailing whitespace
+sanitiseEquation <- function(equation) {
+  equation <- gsub(" *[+] *", "+", equation)
+  equation <- gsub(" *[-] *", "-", equation)
+  equation <- gsub(" *[/] *", "/", equation)
+  equation <- gsub(" *[*] *", "*", equation)
+  equation <- gsub("^\\s+|\\s+$", "", equation)
+  return(equation)
+}
+
+# Function to sanitise group information
+sanitiseGroups <- function(string) {
+  string <- gsub(" *[,] *", ",", string)
+  string <- gsub("^\\s+|\\s+$", "", string)
+  return(string)
+}
+
+# Function to change periods to whitespace in a string
+unmake.names <- function(string) {
+  string <- gsub(".", " ", string, fixed=TRUE)
+  return(string)
+}
+
+# Generate output folder and paths
+makeOut <- function(filename){
+  return(paste0(outPath, "/", filename))
+}
+
+# Generating design information
+pasteListName <- function(string){
+  return(paste0("factors$",string))
+}
+
+# Create cata function: default path set, default seperator empty and appending
+# true by default (Ripped straight from the cat function with altered argument
+# defaults)
+cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
+                 append = TRUE){
+  if (is.character(file)) 
+    if (file == "") 
+      file <- stdout()
+  else if (substring(file, 1L, 1L) == "|") {
+    file <- pipe(substring(file, 2L), "w")
+    on.exit(close(file))
+  }
+  else {
+    file <- file(file, ifelse(append, "a", "w"))
+    on.exit(close(file))
+  }
+  .Internal(cat(list(...), file, sep, fill, labels, append))
+}
+
+# Function to write code for html head and title
+HtmlHead <- function(title){
+  cata("<head>\n")
+  cata("<title>", title, "</title>\n")
+  cata("</head>\n")
+}
+
+# Function to write code for html links
+HtmlLink <- function(address, label=address){
+  cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
+}
+
+# Function to write code for html images
+HtmlImage <- function(source, label=source, height=600, width=600){
+  cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
+  cata("\" width=\"", width, "\"/>\n")
+}
+
+# Function to write code for html list items
+ListItem <- function(...){
+  cata("<li>", ..., "</li>\n")
+}
+
+TableItem <- function(...){
+  cata("<td>", ..., "</td>\n")
+}
+
+TableHeadItem <- function(...){
+  cata("<th>", ..., "</th>\n")
+}
+
+################################################################################
+### Input Processing
+################################################################################
 
 # Collects arguments from command line
 argv <- commandArgs(TRUE)
@@ -82,19 +171,20 @@ if (annoPath=="None"){
 # Set the row names to be the name of the factor and delete first row
 row.names(factorData) <- factorData[, 1]
 factorData <- factorData[, -1]
+factorData <- sapply(factorData, sanitiseGroups)
 factorData <- sapply(factorData, strsplit, split=",")
+factorData <- sapply(factorData, make.names)
 
 # Transform factor data into data frame of R factor objects
 factors <- data.frame(factorData)
 
-# Split up contrasts seperated by comma into a vector
-contrastData <- unlist(strsplit(contrastData, split=","))
-
-# Generate output folder and paths
+#Create output directory
 dir.create(outPath)
-makeOut <- function(filename){
-  return(paste0(outPath, "/", filename))
-}
+
+# Split up contrasts seperated by comma into a vector then sanitise
+contrastData <- unlist(strsplit(contrastData, split=","))
+contrastData <- sanitiseEquation(contrastData)
+contrastData <- gsub(" ", ".", contrastData, fixed=TRUE)
 
 bcvOutPdf <- makeOut("bcvplot.pdf")
 bcvOutPng <- makeOut("bcvplot.png")
@@ -138,9 +228,11 @@ if (haveAnno){
 
 # Filter out genes that do not have a required cpm in a required number of
 # samples
+preFilterCount <- nrow(data$counts)
 sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data$counts <- data$counts[sel, ]
 data$genes <- data$genes[sel, ]
+postFilterCount <- nrow(data$counts)
 
 # Creating naming data
 samplenames <- colnames(data$counts)
@@ -153,10 +245,6 @@ data$samples$norm.factors <- 1
 row.names(data$samples) <- colnames(data$counts)
 data <- new("DGEList", data)
 
-# Generating design information
-pasteListName <- function(string){
-  return(paste0("factors$",string))
-}
 factorList <- sapply(names(factors), pasteListName)
 formula <- "~0"
 for (i in 1:length(factorList)){
@@ -238,19 +326,23 @@ for (i in 1:length(contrastData)){
   status = decideTests(voomFit[, i], adjust.method=pAdjOpt, p.value=pValReq,
                        lfc=lfcReq)
   sumStatus <- summary(status)
+  upCount <- sumStatus["1",]
+  downCount <- sumStatus["-1",]
+  flatCount <- sumStatus["0",]
                        
   # Write top expressions table
   top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
   write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
   
-  linkName <- paste0("Top Expressions Table(", contrastData[i], ") (.tsv)")
+  linkName <- paste0("Top Differential Expressions(", contrastData[i], 
+                     ") (.tsv)")
   linkAddr <- paste0("toptab(", contrastData[i], ").tsv")
   linkData <- rbind(linkData, c(linkName, linkAddr))
   
   # Plot MA (log ratios vs mean average) using limma package on weighted data
   pdf(maOutPdf[i])
   limma::plotMA(voomFit, status=status, array=i,
-                main=paste("MA Plot:", contrastData[i]), 
+                main=paste("MA Plot:", unmake.names(contrastData[i])), 
                 col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
@@ -263,7 +355,7 @@ for (i in 1:length(contrastData)){
   
   png(maOutPng[i], height=600, width=600)
   limma::plotMA(voomFit, status=status, array=i,
-                main=paste("MA Plot:", contrastData[i]), 
+                main=paste("MA Plot:", unmake.names(contrastData[i])), 
                 col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
@@ -298,56 +390,6 @@ timeEnd <- as.character(Sys.time())
 # Clear file
 cat("", file=htmlPath)
 
-# Create cat function default path set, default seperator empty and appending
-# true by default (Ripped straight from the cat function with altered argument
-# defaults)
-cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
-                 append = TRUE){
-  if (is.character(file)) 
-    if (file == "") 
-      file <- stdout()
-  else if (substring(file, 1L, 1L) == "|") {
-    file <- pipe(substring(file, 2L), "w")
-    on.exit(close(file))
-  }
-  else {
-    file <- file(file, ifelse(append, "a", "w"))
-    on.exit(close(file))
-  }
-  .Internal(cat(list(...), file, sep, fill, labels, append))
-}
-
-# Function to write code for html head and title
-HtmlHead <- function(title){
-  cata("<head>\n")
-  cata("<title>", title, "</title>\n")
-  cata("</head>\n")
-}
-
-# Function to write code for html links
-HtmlLink <- function(address, label=address){
-  cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
-}
-
-# Function to write code for html images
-HtmlImage <- function(source, label=source, height=600, width=600){
-  cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
-  cata("\" width=\"", width, "\"/>\n")
-}
-
-# Function to write code for html list items
-ListItem <- function(...){
-  cata("<li>", ..., "</li>\n")
-}
-
-TableItem <- function(...){
-  cata("<td>", ..., "</td>\n")
-}
-
-TableHeadItem <- function(...){
-  cata("<th>", ..., "</th>\n")
-}
-
 cata("<html>\n")
 HtmlHead("Limma Output")
 
@@ -381,10 +423,16 @@ cata("or other spreadsheet programs</p>\n")
 
 cata("<h4>Extra Information</h4>\n")
 cata("<ul>\n")
+
 if(cpmReq!=0 && sampleReq!=0){
   tempStr <- paste("Genes that do not have more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are considered",
                    "unexpressed and filtered out.")
+  ListItem(tempStr)
+  tempStr <- paste0(postFilterCount, " of ", preFilterCount," (",
+                   round(postFilterCount/preFilterCount*100, digits=2),
+                   "%) genes were filtered ",
+                   "out for low expression")
   ListItem(tempStr)
 }
 ListItem(normOpt, " was the method used to normalise library sizes.")
@@ -394,17 +442,36 @@ if(wantWeight){
   ListItem("Weights were not applied to samples.")
 }
 if(pAdjOpt!="none"){
-  tempStr <- paste("MA-Plot highlighted genes are significant at adjusted ",
+  tempStr <- paste0("MA-Plot highlighted genes are significant at adjusted ",
                    "p-value of ", pValReq,"  by the ", pAdjOpt, 
                    " method, and exhibit log2-fold-change of at least ", 
-                   lfcReq)
+                   lfcReq, ".")
   ListItem(tempStr)
 } else {
-  tempStr <- paste("MA-Plot highlighted genes are significant at p-value of ",
-                    pValReq," and exhibit log2-fold-change of at least ", 
-                    lfcReq)
-  ListItem(tempStr)
+  if (pAdjOpt=="BH" || pAdjOpt=="BY"){
+    tempStr <- paste0("MA-Plot highlighted genes are significant at FDR ",
+                      "of ", pValReq," and exhibit log2-fold-change of at ", 
+                      "least ", lfcReq, ".")
+    ListItem(tempStr)
+  } else {
+    tempStr <- paste0("MA-Plot highlighted genes are significant at p-value ",
+                      "of ", pValReq," and exhibit log2-fold-change of at ", 
+                      "least ", lfcReq, ".")
+    ListItem(tempStr)
+  }
 }
+
+tempStr <- paste0(upCount, " (", round(upCount/postFilterCount*100, 2), "%)",
+                  " genes showed significant increase in expression.")
+ListItem(tempStr)
+
+tempStr <- paste0(downCount, " (", round(downCount/postFilterCount*100, 2), 
+                  "%)", " genes showed significant decrease in expression.")
+ListItem(tempStr)
+
+tempStr <- paste0(flatCount, " (", round(flatCount/postFilterCount*100, 2), 
+                  "%)", " genes showed no significant change in expression.")
+ListItem(tempStr)
 
 cata("</ul>\n")
 
@@ -422,7 +489,7 @@ for (i in 1:nrow(factors)){
   cata("<tr>\n")
   TableHeadItem(row.names(factors)[i])
   for (j in ncol(factors)){
-    TableItem(as.character(factors[i, j]))
+    TableItem(as.character(unmake.names(factors[i, j])))
   }
   cata("</tr>\n")
 }
@@ -470,9 +537,7 @@ cit[7] <- paste("McCarthy DJ, Chen Y and Smyth GK (2012). Differential",
                 "4288-4297")
 cit[8] <- paste("Law, CW, Chen, Y, Shi, W, and Smyth, GK (2014). Voom:",
                 "precision weights unlock linear model analysis tools for",
-                "RNA-seq read counts. Genome Biology.", 
-                "(Accepted 9 January 2014)")
-
+                "RNA-seq read counts. Genome Biology 15, R29.")
 cit[9] <- paste("Ritchie, M. E., Diyagama, D., Neilson, J., van Laar,", 
                 "R., Dobrovic, A., Holloway, A., and Smyth, G. K. (2006).",
                 "Empirical array quality weights for microarray data.",

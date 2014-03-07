@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.5">
+<tool id="diffexp" name="DiffExp" version="1.0.6">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -14,20 +14,20 @@
   </stdio>
   
   <command interpreter="Rscript">
-    diffexp.R $counts
+    diffexp.R "$counts"
               
               #if $anno.annoOpt=="yes":
-                $geneanno 
+                "$geneanno"
               #else:
-                None
+                "None"
               #end if
               
-              $outFile
-              $outFile.files_path
-              $wantRda.rdaOption
-              $normalisationOption 
-              $weightCond.weightOption
-              $contrast
+              "$outFile"
+              "$outFile.files_path"
+              "$wantRda.rdaOption"
+              "$normalisationOption"
+              "$weightCond.weightOption"
+              "$contrast"
 
               #if $filterCPM.filterLowCPM=="yes":
                 $filterCPM.cpmReq
@@ -38,11 +38,11 @@
               #end if
               
               #if $testOpt.wantOpt=="yes":
-              	$testOpt.pAdjust
+              	"$testOpt.pAdjust"
               	$testOpt.pVal
               	$testOpt.lfc
               #else:
-                BH
+                "BH"
                 0.05
                 0
               #end if
@@ -52,7 +52,7 @@
                 $fct.factName::$fct.factLevel
               #end for
               -->
-              $factName::$factLevel
+              "$factName::$factLevel"
                
   </command>
    
@@ -61,8 +61,8 @@
       
     <conditional name="anno">
       <param name="annoOpt" type="select" label="Use Gene Annotations?"
-             help="Annotations will be added to table of top expressions
-                   to provide descriptions for each gene">
+             help="Annotations will be added to table of top differential 
+                   expressions to provide descriptions for each gene.">
         <option value="no">No</option>
         <option value="yes">Yes</option>
       </param>
@@ -84,7 +84,7 @@
     -->
     
     <param name="factName" type="text" label="Factor Name (No spaces)"
-           help="Eg. Genotype"/>
+           help="Eg. Genotype."/>
     <param name="factLevel" type="text" size="100"
            label="Factor Values (No spaces)"
            help="Eg. WT,WT,Mut,Mut,WT... NOTE: Please ensure that the same
@@ -93,12 +93,12 @@
     
     <param name="contrast" type="text" size="30"
            label="Contrasts of interest (No spaces)"
-           help="Eg. Mut-WT,KD-Control"/>
+           help="Eg. Mut-WT,KD-Control."/>
     
     <conditional name="filterCPM">
       <param name="filterLowCPM" type="select" label="Filter Low CPM?"
        help="Treat genes with very low expression as unexpressed and 
-       			 filter out to speed up computation">
+       			 filter out to speed up computation.">
         <option value="yes" selected="True">Yes</option>
         <option value="no">No</option>
       </param>
@@ -110,7 +110,7 @@
           <param name="sampleReq" type="integer" value="1" min="0"
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
-                       CPM in at least this many samples"/>
+                       CPM in at least this many samples."/>
         </when>
         
         <when value="no"/>
@@ -119,7 +119,7 @@
        
     <conditional name="weightCond">
       <param name="weightOption" type="select" label="Apply sample weights?"
-             display="radio" help="Apply weights if outliers are present">
+             display="radio" help="Apply weights if outliers are present.">
              
         <option value="no">No</option>
         <option value="yes">Yes</option>
@@ -140,13 +140,13 @@
     <conditional name="testOpt">
       <param name="wantOpt" type="select" label="Use Advanced Testing Options?"
        help="Enable choices for p-value adjustment method, p-value threshold
-             and log2-fold-change threshold">
+             and log2-fold-change threshold.">
         <option value="no" selected="True">No</option>
       	<option value="yes">Yes</option>
       </param>
       
         <when value="yes">
-        	<param name="pAdjust" type="select" label="P-Value Adjustment Method">
+        	<param name="pAdjust" type="select" label="P-Value Adjustment Method.">
           	<option value="BH">Benjamini and Hochberg (1995)</option>
             <option value="BY">Benjamini and Yekutieli (2001)</option>
             <option value="holm">Holm (1979)</option>
@@ -154,13 +154,19 @@
           </param>
           
           <param name="pVal" type="float" value="0.05" min="0" max="1"
-    			 		   label="P-Value Threshold"
-    			 		   help="Genes below this threshold are considered significant"/>
+    			 		   label="Adjusted Threshold"
+    			 		   help="Genes below this threshold are considered significant and
+    			 		         highlighted in the MA plot. If either BH(1995) or
+    			 		         BY(2001) were selected then this value is a 
+    			 		         false-discovery-rate control. If Holm(1979) was selected
+    			 		         then this is an adjusted p-value for family-wise error 
+    			 		         rate."/>
     			 		   
           <param name="lfc" type="float" value="0" min="0"
           			 label="Minimum log2-fold-change Required"
           			 help="Genes above this threshold and below the p-value
-          			       threshold are considered significant"/>
+          			       threshold are considered significant and highlighted
+          			       in the MA plot."/>
         </when>
         
         <when value="no"/>
@@ -171,7 +177,7 @@
       <param name="rdaOption" type="select" label="Output RData?"
              display="radio"
              help="Output all the data R used to construct the plots,
-                   can be loaded into R">
+                   can be loaded into R.">
                   
         <option value="no">No</option>
         <option value="yes">Yes</option>
@@ -231,7 +237,7 @@ data.
 **Gene Annotations:**
 Optional input for gene annotations, this can contain more
 information about the genes than just an ID number. The annotations will
-be avaiable in the top expressions table.
+be avaiable in the top differential expression table.
 
 Example::
 
@@ -293,6 +299,27 @@ used in the statistical analysis but their impact is reduced. Use this
 whenever significant outliers are present. The MDS plotting tool in this package
 is useful for identifying outliers
 
+**Use Advanced Testing Options?:**
+By default error rate for multiple testing is controlled using Benjamini and
+Hochberg's false discovery rate control at a threshold value of 0.05. However
+there are options to change this to custom values.
+
+  * **P-Value Adjustment Method:**
+    Change the multiple testing control method, the options are BH(1995) and 
+    BY(2001) which are both false discovery rate controls. There is also
+    Holm(1979) which is a method for family-wise error rate control.
+  
+  * **Adjusted Threshold:**
+    Set the threshold for the resulting value of the multiple testing control
+    method. Only observations whose statistic falls below this value is
+    considered significant, thus highlighted in the MA plot.
+    
+  * **Minimum log2-fold-change Required:**
+    In addition to meeting the requirement for the adjusted statistic for
+    multiple testing, the observation must have an absolute log2-fold-change
+    greater than this threshold to be considered significant, thus highlighted 
+    in the MA plot.
+
 -----
 
 **Citations:**
@@ -307,10 +334,14 @@ methods implemented in limma, depending on which limma functions you are
 using.  The methodology articles are listed in Section 2.1 of the limma 
 User's Guide.
 
-	* Smyth, GK (2005). Limma: linear models for microarray data. In: 
-	  'Bioinformatics and Computational Biology Solutions using R and 
-	  Bioconductor'. R. Gentleman, V. Carey, S. Dudoit, R. Irizarry, 
-	  W. Huber (eds), Springer, New York, pages 397-420.
+  * Smyth, GK (2005). Limma: linear models for microarray data. In: 
+    'Bioinformatics and Computational Biology Solutions using R and 
+    Bioconductor'. R. Gentleman, V. Carey, S. Dudoit, R. Irizarry, 
+    W. Huber (eds), Springer, New York, pages 397-420.
+	  
+  * Law, CW, Chen, Y, Shi, W, and Smyth, GK (2014). Voom:
+    precision weights unlock linear model analysis tools for
+    RNA-seq read counts. Genome Biology 15, R29.
 
 .. class:: infomark
 
