@@ -1,7 +1,7 @@
 # ARGS: 1.inputType         -String specifying format of input (fastq or table)
 #    IF inputType is "fastQ":
 #       2*.fastqPath        -One or more strings specifying path to fastq files
-#       2.hairpinPath       -String specifying path to hairpin annotation table
+#       2.annoPath        -String specifying path to hairpin annotation table
 #       3.samplePath        -String specifying path to sample annotation table
 #       4.barStart          -Integer specifying starting position of barcode
 #       5.barEnd            -Integer specifying ending position of barcode
@@ -163,7 +163,7 @@ if (inputType=="fastq") {
   fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq::", argv)], 
                                  fixed=TRUE))
   argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
-  hairpinPath <- as.character(argv[2])
+  annoPath <- as.character(argv[2])
   samplePath <- as.character(argv[3])
   barStart <- as.numeric(argv[4])
   barEnd <- as.numeric(argv[5])
@@ -195,14 +195,13 @@ if (workMode=="classic") {
 }
 
 # Read in inputs
-if (inputType=="fastq") {
-  samples <- read.table(samplePath, header=TRUE, sep="\t")
-  hairpins <- read.table(hairpinPath, header=TRUE, sep="\t")
-} else if (inputType=="counts") {
-  samples <- read.table(samplePath, header=TRUE, sep="\t")
+
+samples <- read.table(samplePath, header=TRUE, sep="\t")
+anno <- read.table(annoPath, header=TRUE, sep="\t")
+if (inputType=="counts") {
   counts <- read.table(countPath, header=TRUE, sep="\t")
-  anno <- read.table(annoPath, header=TRUE, sep="\t")
 }
+
 ###################### Check inputs for correctness ############################
 samples$ID <- make.names(samples$ID)
 
@@ -220,21 +219,12 @@ if (any(table(samples$ID)>1)){
 
 if (inputType=="fastq") {
   
-  if (any(table(hairpins$ID)>1)){
-    tab <- table(hairpins$ID)
+  if (any(table(anno$ID)>1)){
+    tab <- table(anno$ID)
     offenders <- paste(names(tab[tab>1]), collapse=", ")
     stop("'ID' column of hairpin annotation must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in hairpin annotation are unique
-  if (workMode=="glm") {
-    if (roastOpt == "yes") {
-      if (is.na(match("Gene", colnames(hairpins)))) {
-        tempStr <- paste("Gene-wise tests selected but 'Gene' column not",
-        "specified in hairpin annotation file")
-        stop(tempStr)
-      }
-    }
-  }
   
 } else if (inputType=="counts") {
   if (any(is.na(match(samples$ID, colnames(counts))))) {
@@ -247,13 +237,13 @@ if (inputType=="fastq") {
     stop("'ID' column of count table must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in count table are unique
-  if (workMode=="glm") {
-    if (roastOpt == "yes") {
-      if (is.na(match("Gene", colnames(anno)))) {
-        tempStr <- paste("Gene-wise tests selected but'Gene' column not",
-        "specified in hairpin annotation file")
-        stop(tempStr)
-      }
+}
+if (workMode=="glm") {
+  if (roastOpt == "yes") {
+    if (is.na(match("Gene", colnames(anno)))) {
+      tempStr <- paste("Gene-wise tests selected but'Gene' column not",
+      "specified in hairpin annotation file")
+      stop(tempStr)
     }
   }
 }
@@ -345,7 +335,7 @@ if (workMode=="glm") {
 if (inputType=="fastq") {
   # Use EdgeR hairpin process and capture outputs
   hpReadout <- capture.output(
-  data <- processHairpinReads(fastqPath, samplePath, hairpinPath,
+  data <- processHairpinReads(fastqPath, samplePath, annoPath,
                               hairpinStart=hpStart, hairpinEnd=hpEnd, 
                               verbose=TRUE)
   )
@@ -390,8 +380,11 @@ if (inputType=="fastq") {
 }
 
 # Filter hairpins with low counts
+preFilterCount <- nrow(data)
 sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data <- data[sel, ]
+postFilterCount <- nrow(data)
+filteredCount <- preFilterCount-postFilterCount
 
 # Estimate dispersions
 data <- estimateDisp(data)
@@ -684,6 +677,33 @@ cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
 cata("<table border=\"0\">\n")
+
+cata("<h4>Additional Information:</h4>\n")
+
+if (inputType == "fastq") {
+  ListItem("Data was gathered from fastq raw read file(s).")
+} else if (inputType == "counts") {
+  ListItem("Data was gathered from a table of counts.")
+}
+
+if (cpmReq!=0 && sampleReq!=0) {
+  tempStr <- paste("Hairpins that do not have more than", cpmReq,
+                   "CPM in at least", sampleReq, "samples are considered",
+                   "insignificant and filtered out.")
+  ListItem(tempStr)
+  filterProp <- round(filteredCount/preFilterCount*100, digits=2)
+  tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
+                   "%) hairpins were filtered out for low count-per-million.")
+  ListItem(tempStr)
+}
+
+if (workMode == "classic") {
+  ListItem("An exact test was performed on each hairpin.")
+} else if (workMode == "glm") {
+  ListItem("A generalised linear model was fitted to each hairpin.")
+}
+
+
 
 cit <- character()
 link <-character()

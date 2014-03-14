@@ -63,12 +63,12 @@ unmake.names <- function(string) {
 }
 
 # Generate output folder and paths
-makeOut <- function(filename){
+makeOut <- function(filename) {
   return(paste0(outPath, "/", filename))
 }
 
 # Generating design information
-pasteListName <- function(string){
+pasteListName <- function(string) {
   return(paste0("factors$",string))
 }
 
@@ -76,7 +76,7 @@ pasteListName <- function(string){
 # true by default (Ripped straight from the cat function with altered argument
 # defaults)
 cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
-                 append = TRUE){
+                 append = TRUE) {
   if (is.character(file)) 
     if (file == "") 
       file <- stdout()
@@ -92,33 +92,33 @@ cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL,
 }
 
 # Function to write code for html head and title
-HtmlHead <- function(title){
+HtmlHead <- function(title) {
   cata("<head>\n")
   cata("<title>", title, "</title>\n")
   cata("</head>\n")
 }
 
 # Function to write code for html links
-HtmlLink <- function(address, label=address){
+HtmlLink <- function(address, label=address) {
   cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
 }
 
 # Function to write code for html images
-HtmlImage <- function(source, label=source, height=600, width=600){
+HtmlImage <- function(source, label=source, height=600, width=600) {
   cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
   cata("\" width=\"", width, "\"/>\n")
 }
 
 # Function to write code for html list items
-ListItem <- function(...){
+ListItem <- function(...) {
   cata("<li>", ..., "</li>\n")
 }
 
-TableItem <- function(...){
+TableItem <- function(...) {
   cata("<td>", ..., "</td>\n")
 }
 
-TableHeadItem <- function(...){
+TableHeadItem <- function(...) {
   cata("<th>", ..., "</th>\n")
 }
 
@@ -144,25 +144,25 @@ pAdjOpt <- as.character(argv[11])
 pValReq <- as.numeric(argv[12])
 lfcReq <- as.numeric(argv[13])
 factorData <- list()
-for (i in 14:length(argv)){
+for (i in 14:length(argv)) {
   newFact <- unlist(strsplit(as.character(argv[i]), split="::"))
   factorData <- rbind(factorData, newFact)
 } # Factors have the form: FACT_NAME::LEVEL,LEVEL,LEVEL,LEVEL,...
 
 # Process arguments
-if (weightOpt=="yes"){
+if (weightOpt=="yes") {
   wantWeight <- TRUE
 } else {
   wantWeight <- FALSE
 }
 
-if (rdaOpt=="yes"){
+if (rdaOpt=="yes") {
   wantRda <- TRUE
 } else {
   wantRda <- FALSE
 }
 
-if (annoPath=="None"){
+if (annoPath=="None") {
   haveAnno <- FALSE
 } else {
   haveAnno <- TRUE
@@ -193,7 +193,7 @@ voomOutPng <- makeOut("voomplot.png")
 maOutPdf <- character()   # Initialise character vector
 maOutPng <- character()
 topOut <- character()
-for (i in 1:length(contrastData)){
+for (i in 1:length(contrastData)) {
   maOutPdf[i] <- makeOut(paste0("maplot(", contrastData[i], ").pdf"))
   maOutPng[i] <- makeOut(paste0("maplot(", contrastData[i], ").png"))
   topOut[i] <- makeOut(paste0("toptab(", contrastData[i], ").tsv"))
@@ -207,9 +207,14 @@ linkData <- data.frame(Label=character(), Link=character(),
 imageData <- data.frame(Label=character(), Link=character(),
                         stringsAsFactors=FALSE)
 
+# Initialise vectors for storage of up/down/neutral regulated counts
+upCount <- numeric()
+downCount <- numeric()
+flatCount <- numeric()
+                        
 # Read in counts and geneanno data
 counts <- read.table(countPath, header=TRUE, sep="\t")
-if (haveAnno){
+if (haveAnno) {
   geneanno <- read.table(annoPath, header=TRUE, sep="\t")
 }
 
@@ -220,7 +225,7 @@ if (haveAnno){
 # Extract counts and annotation data
 data <- list()
 data$counts <- counts
-if (haveAnno){
+if (haveAnno) {
   data$genes <- geneanno
 } else {
   data$genes <- data.frame(GeneID=row.names(counts))
@@ -233,6 +238,7 @@ sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
 data$counts <- data$counts[sel, ]
 data$genes <- data$genes[sel, ]
 postFilterCount <- nrow(data$counts)
+filteredCount <- preFilterCount-postFilterCount
 
 # Creating naming data
 samplenames <- colnames(data$counts)
@@ -247,12 +253,12 @@ data <- new("DGEList", data)
 
 factorList <- sapply(names(factors), pasteListName)
 formula <- "~0"
-for (i in 1:length(factorList)){
+for (i in 1:length(factorList)) {
   formula <- paste(formula, factorList[i], sep="+")
 }
 formula <- formula(formula)
 design <- model.matrix(formula)
-for (i in 1:length(factorList)){
+for (i in 1:length(factorList)) {
   colnames(design) <- gsub(factorList[i], "", colnames(design), fixed=TRUE)
 }
 
@@ -281,8 +287,8 @@ row.names(factors) <- names(data$counts)
 #invisible(dev.off())
 
 
-for (i in 1:length(contrastData)){
-  if (wantWeight){
+for (i in 1:length(contrastData)) {
+  if (wantWeight) {
     # Generating weights
     vData <- voom(data, design = design)
     aw <- arrayWeights(vData, design)
@@ -326,9 +332,10 @@ for (i in 1:length(contrastData)){
   status = decideTests(voomFit[, i], adjust.method=pAdjOpt, p.value=pValReq,
                        lfc=lfcReq)
   sumStatus <- summary(status)
-  upCount <- sumStatus["1",]
-  downCount <- sumStatus["-1",]
-  flatCount <- sumStatus["0",]
+  
+  upCount[i] <- sumStatus["1",]
+  downCount[i] <- sumStatus["-1",]
+  flatCount[i] <- sumStatus["0",]
                        
   # Write top expressions table
   top <- topTable(voomFit, coef=i, number=Inf, sort.by="P")
@@ -366,10 +373,12 @@ for (i in 1:length(contrastData)){
   imageData <- rbind(imageData, c(imgName, imgAddr))
   invisible(dev.off())
 }
+sigDiff <- data.frame(Up=upCount, Flat=flatCount, Down=downCount)
+row.names(sigDiff) <- contrastData
 
 # Save relevant items as rda object
-if (wantRda){
-  if (wantWeight){
+if (wantRda) {
+  if (wantWeight) {
     save(data, status, vData, labels, factors, wts, voomFit, top, contrasts, 
          design,
          file=rdaOut, ascii=TRUE)
@@ -397,20 +406,20 @@ cata("<body>\n")
 cata("<h3>Limma Analysis Output:</h3>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
 cata("exported in a pdf viewer to high resolution image format. <br/>\n")
-for (i in 1:nrow(imageData)){
+for (i in 1:nrow(imageData)) {
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
 
 cata("<h4>Plots:</h4>\n")
-for (i in 1:nrow(linkData)){
-  if (!grepl(".tsv", linkData$Link[i])){
+for (i in 1:nrow(linkData)) {
+  if (!grepl(".tsv", linkData$Link[i])) {
     HtmlLink(linkData$Link[i], linkData$Label[i])
   }
 }
 
 cata("<h4>Tables:</h4>\n")
-for (i in 1:nrow(linkData)){
-  if (grepl(".tsv", linkData$Link[i])){
+for (i in 1:nrow(linkData)) {
+  if (grepl(".tsv", linkData$Link[i])) {
     HtmlLink(linkData$Link[i], linkData$Label[i])
   }
 }
@@ -421,74 +430,76 @@ cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
 
-cata("<h4>Extra Information</h4>\n")
+cata("<h4>Additional Information</h4>\n")
 cata("<ul>\n")
-
-if(cpmReq!=0 && sampleReq!=0){
+if (cpmReq!=0 && sampleReq!=0) {
   tempStr <- paste("Genes that do not have more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are considered",
                    "unexpressed and filtered out.")
   ListItem(tempStr)
-  tempStr <- paste0(postFilterCount, " of ", preFilterCount," (",
-                   round(postFilterCount/preFilterCount*100, digits=2),
-                   "%) genes were filtered ",
-                   "out for low expression")
+  filterProp <- round(filteredCount/preFilterCount*100, digits=2)
+  tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
+                   "%) genes were filtered out for low expression.")
   ListItem(tempStr)
 }
 ListItem(normOpt, " was the method used to normalise library sizes.")
-if(wantWeight){
+if (wantWeight) {
   ListItem("Weights were applied to samples.")
 } else {
   ListItem("Weights were not applied to samples.")
 }
-if(pAdjOpt!="none"){
-  tempStr <- paste0("MA-Plot highlighted genes are significant at adjusted ",
-                   "p-value of ", pValReq,"  by the ", pAdjOpt, 
-                   " method, and exhibit log2-fold-change of at least ", 
-                   lfcReq, ".")
-  ListItem(tempStr)
-} else {
-  if (pAdjOpt=="BH" || pAdjOpt=="BY"){
+if (pAdjOpt!="none") {
+  if (pAdjOpt=="BH" || pAdjOpt=="BY") {
     tempStr <- paste0("MA-Plot highlighted genes are significant at FDR ",
                       "of ", pValReq," and exhibit log2-fold-change of at ", 
                       "least ", lfcReq, ".")
     ListItem(tempStr)
-  } else {
-    tempStr <- paste0("MA-Plot highlighted genes are significant at p-value ",
-                      "of ", pValReq," and exhibit log2-fold-change of at ", 
-                      "least ", lfcReq, ".")
+  } else if (pAdjOpt=="holm") {
+    tempStr <- paste0("MA-Plot highlighted genes are significant at adjusted ",
+                      "p-value of ", pValReq,"  by the Holm(1979) ",
+                      "method, and exhibit log2-fold-change of at least ", 
+                      lfcReq, ".")
     ListItem(tempStr)
   }
+} else {
+  tempStr <- paste0("MA-Plot highlighted genes are significant at p-value ",
+                    "of ", pValReq," and exhibit log2-fold-change of at ", 
+                    "least ", lfcReq, ".")
+  ListItem(tempStr)
 }
-
-tempStr <- paste0(upCount, " (", round(upCount/postFilterCount*100, 2), "%)",
-                  " genes showed significant increase in expression.")
-ListItem(tempStr)
-
-tempStr <- paste0(downCount, " (", round(downCount/postFilterCount*100, 2), 
-                  "%)", " genes showed significant decrease in expression.")
-ListItem(tempStr)
-
-tempStr <- paste0(flatCount, " (", round(flatCount/postFilterCount*100, 2), 
-                  "%)", " genes showed no significant change in expression.")
-ListItem(tempStr)
-
 cata("</ul>\n")
 
-cata("<h4>Summary of experimental data</h4>\n")
 
 cata("<table border=\"1\">\n")
 cata("<tr>\n")
 TableItem()
-for (i in names(factors)){
+for (i in colnames(sigDiff)) {
+  TableHeadItem(i)
+}
+cata("</tr>\n")
+for (i in 1:nrow(sigDiff)) {
+  cata("<tr>\n")
+  TableHeadItem(unmake.names(row.names(sigDiff)[i]))
+  for (j in 1:ncol(sigDiff)) {
+    TableItem(as.character(sigDiff[i, j]))
+  }
+  cata("</tr>\n")
+}
+cata("</table>")
+
+cata("<h4>Summary of experimental data</h4>\n")
+cata("<table border=\"1\">\n")
+cata("<tr>\n")
+TableItem()
+for (i in names(factors)) {
   TableHeadItem(i)
 }
 cata("</tr>\n")
 
-for (i in 1:nrow(factors)){
+for (i in 1:nrow(factors)) {
   cata("<tr>\n")
   TableHeadItem(row.names(factors)[i])
-  for (j in ncol(factors)){
+  for (j in ncol(factors)) {
     TableItem(as.character(unmake.names(factors[i, j])))
   }
   cata("</tr>\n")
