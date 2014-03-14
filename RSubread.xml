@@ -41,6 +41,8 @@
               $nthreads
               $countsOut
               $geneannoOut
+              $summary
+              $summary.files_path
   </command>
 
   <inputs>
@@ -139,6 +141,7 @@
   <outputs>
     <data format="tabular" name="countsOut" label="Feature Counts"/>
     <data format="tabular" name="geneannoOut" label="Gene Annotations"/>
+    <data format="html" name="summary" label="RSubread Summary"/>
   </outputs>
 
   <help>

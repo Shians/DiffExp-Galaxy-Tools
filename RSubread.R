@@ -4,12 +4,143 @@
 # Record starting time
 timeStart <- as.character(Sys.time())
 
-# Load all required libraries
-library("Rsubread", quietly=TRUE, warn.conflicts=FALSE)
-library("BiocGenerics", quietly=TRUE, warn.conflicts=FALSE)
-library("parallel", quietly=TRUE, warn.conflicts=FALSE)
-library("org.Mm.eg.db", quietly=TRUE, warn.conflicts=FALSE)
-library("org.Hs.eg.db", quietly=TRUE, warn.conflicts=FALSE)
+################################################################################
+### Function Delcaration
+################################################################################
+# Function to load libaries without messages
+silentLibrary <- function(...) {
+  list <- c(...)
+  for (package in list){
+    suppressPackageStartupMessages(library(package, character.only=TRUE))
+  }
+}
+
+# Function to add counts from multiple colums into a single column, removes
+# all but the first specified column which holds the sum of all specified
+# columns
+addCols <- function(dataframe, indices){
+  if (!is.vector(counts$counts[, indices])){
+    dataframe[, indices[1]] <- rowSums(dataframe[, indices])
+    dataframe <- dataframe[, -indices[2:length(indices)]]
+  }
+  return(dataframe)
+}
+
+# Function to sanitise contrast equations so there are no whitespaces
+# surrounding the arithmetic operators, leading or trailing whitespace
+sanitiseEquation <- function(equation) {
+  equation <- gsub(" *[+] *", "+", equation)
+  equation <- gsub(" *[-] *", "-", equation)
+  equation <- gsub(" *[/] *", "/", equation)
+  equation <- gsub(" *[*] *", "*", equation)
+  equation <- gsub("^\\s+|\\s+$", "", equation)
+  return(equation)
+}
+
+# Function to sanitise group information
+sanitiseGroups <- function(string) {
+  string <- gsub(" *[,] *", ",", string)
+  string <- gsub("^\\s+|\\s+$", "", string)
+  return(string)
+}
+
+# Function to change periods to whitespace in a string
+unmake.names <- function(string) {
+  string <- gsub(".", " ", string, fixed=TRUE)
+  return(string)
+}
+
+# Generate output folder and paths
+makeOut <- function(filename) {
+  return(paste0(outPath, "/", filename))
+}
+
+# Generating design information
+pasteListName <- function(string) {
+  return(paste0("factors$",string))
+}
+
+# Create cata function: default path set, default seperator empty and appending
+# true by default (Ripped straight from the cat function with altered argument
+# defaults)
+cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
+                 append = TRUE) {
+  if (is.character(file)) 
+    if (file == "") 
+      file <- stdout()
+  else if (substring(file, 1L, 1L) == "|") {
+    file <- pipe(substring(file, 2L), "w")
+    on.exit(close(file))
+  }
+  else {
+    file <- file(file, ifelse(append, "a", "w"))
+    on.exit(close(file))
+  }
+  .Internal(cat(list(...), file, sep, fill, labels, append))
+}
+
+# Function to write code for html head and title
+HtmlHead <- function(title) {
+  cata("<head>\n")
+  cata("<title>", title, "</title>\n")
+  cata("</head>\n")
+}
+
+# Function to write code for html links
+HtmlLink <- function(address, label=address) {
+  cata("<a href=\"", address, "\" target=\"_blank\">", label, "</a><br />\n")
+}
+
+# Function to write code for html images
+HtmlImage <- function(source, label=source, height=600, width=600) {
+  cata("<img src=\"", source, "\" alt=\"", label, "\" height=\"", height)
+  cata("\" width=\"", width, "\"/>\n")
+}
+
+# Function to write code for html list items
+ListItem <- function(...) {
+  cata("<li>", ..., "</li>\n")
+}
+
+TableItem <- function(...) {
+  cata("<td>", ..., "</td>\n")
+}
+
+TableHeadItem <- function(...) {
+  cata("<th>", ..., "</th>\n")
+}
+
+HtmlSpacing <- function(string) {
+  string <- gsub(" ", "&nbsp;", string, fixed=TRUE)
+  string <- gsub("\t", "&nbsp;&nbsp;&nbsp;&nbsp;", string, fixed=TRUE)
+  return(string)
+}
+
+TrimAlignOutput <- function(alignOutput) {
+  start <- which(grepl("=== Running", alignOutput, fixed=TRUE))
+  end <- which(grepl("\\\\================", alignOutput, fixed=TRUE))+1
+  ranges <- numeric()
+  for (i in 1:length(start)) {
+    ranges <- c(ranges, start[i]:end[end > start[i]][1])
+  }
+  banners <- which(grepl("==========   |_____/", alignOutput, fixed=TRUE))[-1]
+  for (i in 1:length(banners)) {
+    ranges <- c(ranges, (banners[i]-7):(banners[i]+1))
+  }
+  alignOutput <- alignOutput[-ranges]
+  
+  ranges <- numeric()
+  summary <- which(grepl("== Summary ==", alignOutput, fixed=TRUE))
+  for (i in 1:length(summary)) {
+    ranges <- c(ranges, (summary[i]-3):(summary[i]))
+  }
+  alignOutput <- alignOutput[-ranges]
+  return(alignOutput)
+}
+
+################################################################################
+### Input Processing
+################################################################################
 
 # Grabbing arguments from command line
 argv <- commandArgs(TRUE)
@@ -27,6 +158,8 @@ pairMode <- as.character(argv[6])
 nThreads <- as.numeric(argv[7])
 countsOut <- as.character(argv[8])
 geneannoOut <- as.character(argv[9])
+htmlPath <- as.character(argv[10])
+htmlDirPath <- as.character(argv[11])
 
 # Collecting name, group and path values for each fastq input
 fastqPath <- strsplit(fastqPath, "::")
@@ -60,16 +193,21 @@ for (i in 1:nrow(fastqData)){
 ################################################################################
 ### Data Processing
 ################################################################################
+# Load all required packags
+silentLibrary("Rsubread", "org.Mm.eg.db", "org.Hs.eg.db")
 
 # Build index from fasta file if required 
 if (refIndexSource=="history"){
+  buildOutput <- capture.output(
   buildindex(basename="index", reference=refIndex)
+  )
   indexName <- "index"
 } else if (refIndexSource=="indexed"){
   indexName <- refIndex
 }
 
 # *CURRENTLY UNUSED* Align reads using selected algorithm
+alignOutput <- capture.output(
 if (workMode == "subjunc"){
   for (i in 1:nrow(fastqData)){
     if (pairMode=="single"){
@@ -93,24 +231,16 @@ if (workMode == "subjunc"){
     }
   }
 }
+)
 
+featureOutput <- capture.output(
 # Calculated counts from aligned read data
 if (pairMode=="paired"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=TRUE)
 } else if (pairMode=="single"){
   counts <- featureCounts(filesOut, annot.inbuilt=annoOpt, isPairedEnd=FALSE)
 }
-
-# Function to add counts from multiple colums into a single column, removes
-# all but the first specified column which holds the sum of all specified
-# columns
-addCols <- function(dataframe, indices){
-  if (!is.vector(counts$counts[, indices])){
-    dataframe[, indices[1]] <- rowSums(dataframe[, indices])
-    dataframe <- dataframe[, -indices[2:length(indices)]]
-  }
-  return(dataframe)
-}
+)
 
 # Merge columns by sample label, counts belonging to same sample are merged into
 # a single column.
@@ -145,3 +275,33 @@ geneanno <- cbind(counts$anno,
                   "Chr"=chr[match(egids, chr[,1]),2])
 
 write.table(geneanno, file=geneannoOut, sep="\t")
+
+if (exists("buildOutput")) {
+  buildOutput <- sapply(buildOutput, HtmlSpacing)
+}
+alignOutput <- TrimAlignOutput(alignOutput)
+alignOutput <- sapply(alignOutput, HtmlSpacing)
+
+featureOutput <- sapply(featureOutput, HtmlSpacing)
+
+################################################################################
+### HTML Generation
+################################################################################
+
+# Clear file
+cat("", file=htmlPath)
+
+cata("<html>\n")
+cata("<head>\n")
+cata("<title>", "RSubread Output", "</title>\n")
+cata("</head>\n")
+cata("<body>\n")
+cata("<font face=\"Courier New\">\n")
+if (exists("buildOutput")) {
+  cata(buildOutput, sep="<br />\n")
+}
+cata(alignOutput, sep="<br />\n")
+cata("</font>\n")
+cata("</body>\n")
+
+cata("</html>")
