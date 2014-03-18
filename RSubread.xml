@@ -136,7 +136,22 @@
       <option value="15">15</option>
       <option value="16">16</option>
     </param>
-  </inputs>
+    
+    <conditional name="params">
+      <param name="settingsType" type="select" label="Parameter Settings" 
+             help="You can use the default settings or set custom values for 
+                   any of Bowtie's parameters.">
+        <option value="preSet">Use Defaults</option>
+        <option value="full">Full parameter list</option>
+      </param>
+      
+      <when value="preSet" />
+      <!-- Full/advanced params. -->
+      <when value="full">
+        <param>
+      </when>  <!-- full -->
+    </conditional>  <!-- params -->
+    </inputs>
 
   <outputs>
     <data format="tabular" name="countsOut" label="Feature Counts"/>
