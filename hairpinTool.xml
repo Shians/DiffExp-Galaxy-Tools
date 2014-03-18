@@ -4,8 +4,8 @@
   </description>
     
   <requirements>
-    <requirement type="R-module">edgeR</requirement>
-    <requirement type="R-module">limma</requirement>
+    <requirement type="R-module" version="3.5.27">edgeR</requirement>
+    <requirement type="R-module" version="3.18.13">limma</requirement>
   </requirements>
   
   <stdio>
@@ -13,8 +13,8 @@
   </stdio>
   
   <command interpreter="Rscript">
-  hairpinTool.R $inputOpt.type
-                #if $inputOpt.type=="fastq":
+  hairpinTool.R $inputOpt.inputType
+                #if $inputOpt.inputType=="fastq":
                   #for $i, $fas in enumerate($inputOpt.fastq):
                     fastq::$fas.file
                   #end for
@@ -22,7 +22,7 @@
                   $inputOpt.hairpin
                   $inputOpt.samples
                     
-                  #if $inputOpt.positions.option=="yes":
+                  #if $inputOpt.positions.posOption=="yes":
                     $inputOpt.positions.barstart
                     $inputOpt.positions.barend
                     $inputOpt.positions.hpstart
@@ -35,12 +35,12 @@
                   #end if
                 #else:
                   $inputOpt.counts
-                  $inputOpt.anno
-                  $inputOpt.factors
+                  $inputOpt.hairpin
+                  $inputOpt.samples
                   0 0 0
                 #end if
           
-                #if $filterCPM.option=="yes":
+                #if $filterCPM.filtOption=="yes":
                   $filterCPM.cpmReq
                   $filterCPM.sampleReq
                 #else:
@@ -57,12 +57,12 @@
                 #if $workMode.mode=="classic":
                   "$workMode.pair1"
                   "$workMode.pair2"
-                #else:
+                #elif $workMode.mode=="glm":
                   "$workMode.contrast"
-                  $workMode.roast.option
-                  #if $workMode.roast.option=="yes":
+                  $workMode.roast.roastOption
+                  #if $workMode.roast.roastOption=="yes":
                     $workMode.roast.hairpinReq
-                    $workMode.roast.select.option
+                    $workMode.roast.select.selOption
                     "$workMode.roast.select.selection"
                   #else:
                     0
@@ -74,7 +74,7 @@
   
   <inputs>
     <conditional name="inputOpt">
-      <param name="type" type="select" label="Input File Type">
+      <param name="inputType" type="select" label="Input File Type">
         <option value="fastq">FastQ File</option>
         <option value="counts">Table of Counts</option>
       </param>
@@ -92,7 +92,7 @@
         </repeat>
           
         <conditional name="positions">
-          <param name="option" type="select" 
+          <param name="posOption" type="select" 
                  label="Specify Barcode and Hairpin Locations?"
                  help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57.">
             <option value="no" selected="True">No</option>
@@ -118,15 +118,15 @@
       
       <when value="counts">
         <param name="counts" type="data" format="tabular" label="Counts Table"/>
-        <param name="anno" type="data" format="tabular" 
+        <param name="hairpin" type="data" format="tabular" 
                label="Hairpin Annotation"/>
-        <param name="factors" type="data" format="tabular"
+        <param name="samples" type="data" format="tabular"
                label="Sample Annotation"/> 
       </when>
     </conditional>
     
     <conditional name="filterCPM">
-      <param name="option" type="select" label="Filter Low CPM?"
+      <param name="filtOption" type="select" label="Filter Low CPM?"
        help="Ignore hairpins with very low representation when performing 
              analysis.">
         <option value="yes">Yes</option>
@@ -172,7 +172,7 @@
                      expression."/>
                
         <conditional name="roast">
-          <param name="option" type="select" 
+          <param name="roastOption" type="select" 
                  label="Perform Gene Level Analysis?"
                  help="Analyse LogFC tendencies for hairpins belonging
                        to the same gene.">
@@ -187,7 +187,7 @@
                          be analysed."/>
                          
             <conditional name="select">
-              <param name="option" type="select"
+              <param name="selOption" type="select"
                      label="Gene Selection Method">
                 <option value="rank">By p-value Rank</option>
                 <option value="geneID">By Gene Identifier</option>
@@ -232,18 +232,23 @@
   <outputs>
     <data format="html" name="outFile" label="shRNAseq Analysis"/>
   </outputs>
-  <!-- Tests under construction
+  <!-- Tests under construction-->
   <tests>
     <test>
-      <param name="counts" value="zuber_count.txt"/>
-      <param name="anno" value="zuber_anno.txt"/>
-      <param name="factors" value="zuber_samples.txt"/>
+      <param name="inputType" value="fastq"/>
+      <param name="file" value="s2sampled.fastq"/>
+      <param name="hairpin" value="Hairpins2a.txt"/>
+      <param name="samples" value="Samples2a.txt"/>
+      <param name="posOptio" value="no"/>
+      <param name="filtOption" value="no"/>
+      <param name="mode" value="glm"/>
+      <param name=
       <param name="fdr" value="0.05"/>
       <output name="output" file="shRNAseq_Analysis_html" lines_diff="50"/>
     </test>
     
   </tests>
-  -->
+
   <help>
 .. class:: infomark
 

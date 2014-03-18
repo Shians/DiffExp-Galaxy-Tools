@@ -599,8 +599,10 @@ if (workMode=="classic") {
   }
 }
 
-# Record ending time
+# Record ending time and calculate total run time
 timeEnd <- as.character(Sys.time())
+timeTaken <- capture.output(round(difftime(timeEnd,timeStart), digits=3))
+timeTaken <- gsub("Time difference of ", "", timeTaken, fixed=TRUE)
 ################################################################################
 ### HTML Generation
 ################################################################################
@@ -618,12 +620,12 @@ if (inputType=="fastq") {
   ListItem(hpReadout[1])
   ListItem(hpReadout[2])
   cata("</ul>\n")
-  cata(hpReadout[3], "<br/>\n")
+  cata(hpReadout[3], "<br />\n")
   cata("<ul>\n")
   ListItem(hpReadout[4])
   ListItem(hpReadout[7])
   cata("</ul>\n")
-  cata(hpReadout[8:11], sep="<br/>\n")
+  cata(hpReadout[8:11], sep="<br />\n")
   cata("<br />\n")
   cata("<b>Please check that read percentages are consistent with ")
   cata("expectations.</b><br >\n")
@@ -641,7 +643,7 @@ cata("The estimated common biological coefficient of variation (BCV) is: ",
 
 cata("<h4>Output:</h4>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format. <br/>\n")
+cata("exported in a pdf viewer to high resolution image format. <br />\n")
 for (i in 1:nrow(imageData)) {
   if (grepl("barcode", imageData$Link[i])) {
     if (packageVersion("limma")<"3.19.19") {
@@ -655,7 +657,7 @@ for (i in 1:nrow(imageData)) {
     HtmlImage(imageData$Link[i], imageData$Label[i])
   }
 }
-cata("<br/>\n")
+cata("<br />\n")
 
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)) {
@@ -676,7 +678,6 @@ cata("of this task in the galaxy history panel and click on the floppy ")
 cata("disk icon to download all files in a zip archive.</p>\n")
 cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
 cata("or other spreadsheet programs</p>\n")
-cata("<table border=\"0\">\n")
 
 cata("<h4>Additional Information:</h4>\n")
 
@@ -740,12 +741,17 @@ ListItem(cit[3])
 ListItem(cit[4])
 cata("</ol>\n")
 
+cata("<table border=\"0\">\n")
 cata("<tr>\n")
 TableItem("Task started at:"); TableItem(timeStart)
 cata("</tr>\n")
 cata("<tr>\n")
 TableItem("Task ended at:"); TableItem(timeEnd)
 cata("</tr>\n")
+cata("<tr>\n")
+TableItem("Task run time:"); TableItem(timeTaken)
+cata("<tr>\n")
+cata("</table>\n")
 
 cata("</body>\n")
 cata("</html>")

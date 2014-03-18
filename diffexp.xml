@@ -5,8 +5,8 @@
   </description>
   
   <requirements>
-    <requirement type="R-module">edgeR</requirement>
-    <requirement type="R-module">limma</requirement>
+    <requirement type="R-module" version="3.5.27">edgeR</requirement>
+    <requirement type="R-module" version="3.18.13">limma</requirement
   </requirements>
 
   <stdio>

@@ -389,9 +389,10 @@ if (wantRda) {
   linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
 }
 
-# Record ending time
+# Record ending time and calculate total run time
 timeEnd <- as.character(Sys.time())
-
+timeTaken <- capture.output(round(difftime(timeEnd,timeStart), digits=3))
+timeTaken <- gsub("Time difference of ", "", timeTaken, fixed=TRUE)
 ################################################################################
 ### HTML Generation
 ################################################################################
@@ -405,7 +406,7 @@ HtmlHead("Limma Output")
 cata("<body>\n")
 cata("<h3>Limma Analysis Output:</h3>\n")
 cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format. <br/>\n")
+cata("exported in a pdf viewer to high resolution image format. <br />\n")
 for (i in 1:nrow(imageData)) {
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
@@ -579,6 +580,10 @@ cata("</tr>\n")
 cata("<tr>\n")
 TableItem("Task ended at:"); TableItem(timeEnd)
 cata("</tr>\n")
+cata("<tr>\n")
+TableItem("Task run time:"); TableItem(timeTaken)
+cata("<tr>\n")
+cata("</table>\n")
 
 cata("</body>\n")
 cata("</html>")
