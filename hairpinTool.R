@@ -273,7 +273,7 @@ if (exists("pairData")) {
 }
 
 # Generate output folder and paths
-dir.create(folderPath)
+dir.create(folderPath, showWarnings=FALSE)
 
 # Generate links for outputs
 imgOut("barHairpin")
