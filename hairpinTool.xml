@@ -232,23 +232,6 @@
   <outputs>
     <data format="html" name="outFile" label="shRNAseq Analysis"/>
   </outputs>
-  <!-- Tests under construction-->
-  <tests>
-    <test>
-      <param name="inputType" value="fastq"/>
-      <param name="file" value="s2sampled.fastq"/>
-      <param name="hairpin" value="Hairpins2a.txt"/>
-      <param name="samples" value="Samples2a.txt"/>
-      <param name="posOptio" value="no"/>
-      <param name="filtOption" value="no"/>
-      <param name="mode" value="glm"/>
-      <param name=
-      <param name="fdr" value="0.05"/>
-      <output name="output" file="shRNAseq_Analysis_html" lines_diff="50"/>
-    </test>
-    
-  </tests>
-
   <help>
 .. class:: infomark
 

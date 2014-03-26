@@ -148,10 +148,10 @@
       <when value="preSet" />
       <!-- Full/advanced params. -->
       <when value="full">
-        <param>
+
       </when>  <!-- full -->
     </conditional>  <!-- params -->
-    </inputs>
+  </inputs>
 
   <outputs>
     <data format="tabular" name="countsOut" label="Feature Counts"/>
