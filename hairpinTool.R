@@ -182,6 +182,7 @@ lfcThresh <- as.numeric(argv[11])
 workMode <- as.character(argv[12])
 htmlPath <- as.character(argv[13])
 folderPath <- as.character(argv[14])
+
 if (workMode=="classic") {
   pairData <- character()
   pairData[2] <- as.character(argv[15])
@@ -300,6 +301,8 @@ if (workMode == "classic") {
     barcodePdf[i] <- makeOut(paste0("barcode(", contrastData[i], ").pdf"))
   }
 }
+countsOut <- makeOut("counts.tsv")
+
 # Initialise data for html links and images, table with the link label and
 # link address
 linkData <- data.frame(Label=character(), Link=character(),
@@ -598,6 +601,13 @@ if (workMode=="classic") {
     }
   }
 }
+
+ID <- rownames(data$counts)
+outputCounts <- cbind(ID, data$counts)
+write.table(outputCounts, file=countsOut, row.names=FALSE, sep="\t")
+linkName <- "Counts table (.tsv)"
+linkAddr <- "counts.tsv"
+linkData <- rbind(linkData, c(linkName, linkAddr))
 
 # Record ending time and calculate total run time
 timeEnd <- as.character(Sys.time())
