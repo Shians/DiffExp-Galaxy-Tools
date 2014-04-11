@@ -257,9 +257,9 @@ write.table(counts$counts, file=countsOut, sep="\t")
 
 # Load appropriate annotation database
 if (annoOpt=="hg19"){
+  geneNames <- toTable(org.Hs.egGENENAME)
   symbs <- toTable(org.Hs.egSYMBOL)
   chr <- toTable(org.Hs.egCHR)
-  geneNames <- toTable(org.Hs.egGENENAME)
 } else if (annoOpt=="mm9" | annoOpt=="mm10"){
   geneNames <- toTable(org.Mm.egGENENAME)
   symbs <- toTable(org.Mm.egSYMBOL)
