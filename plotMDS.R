@@ -1,11 +1,29 @@
+# This tool takes in an RNAseq feature counts table along with associated
+# information to output a MDS plot
+
 # Collects arguments from command line
 argv <- commandArgs(TRUE)
 
+################################################################################
+### Function Delcaration
+################################################################################
+# Function to sanitise group information
+sanitiseGroups <- function(string) {
+  string <- gsub(" *[,] *", ",", string)
+  string <- gsub("^\\s+|\\s+$", "", string)
+  return(string)
+}
+
+# Function to load libaries without messages
+silentLibrary <- function(...) {
+  list <- c(...)
+  for (package in list){
+    suppressPackageStartupMessages(library(package, character.only=TRUE))
+  }
+}
+
 # Load all required libraries
-library(edgeR, quietly=T, warn.conflicts=F)
-library(limma, quietly=T, warn.conflicts=F)
-library(statmod, quietly=T, warn.conflicts=F)
-library(splines, quietly=T, warn.conflicts=F)
+silentLibrary("methods", "statmod", "splines", "edgeR", "limma")
 
 # Grab Arguments
 countPath <- as.character(argv[1])
@@ -13,6 +31,10 @@ outDir <- as.character(argv[2])
 factData <- unlist(strsplit(as.character(argv[3]), ","))
 labelData <- unlist(strsplit(as.character(argv[4]), ","))
 labelSize <- as.numeric(argv[5])
+
+# Sanitise factor data and labels
+factData <- sanitiseGroups(factData)
+labelData <- sanitiseGroups(labelData)
 
 # Load in data
 counts <- read.table(countPath, header=TRUE, sep="\t")

@@ -1,4 +1,4 @@
-<tool id="plotmds" name="Plot MDS" version="1.0.1">
+<tool id="plotmds" name="Plot MDS" version="1.0.2">
     <description>
         Create a multidimensional scaling plot to identify outliers in samples
     </description>
@@ -8,7 +8,11 @@
     </stdio>
     
     <command interpreter="Rscript">
-        plotMDS.R $countPath $outDir $factData $labelData $labelSize
+        plotMDS.R $countPath
+                  $outDir
+                  "$factData"
+                  "$labelData"
+                  $labelSize
 
     </command>
     
@@ -18,12 +22,12 @@
                help="No data? See help section below!"/>
         
         <param name="factData" type="text" size="100"
-               label="Factor Levels (no space)"
+               label="Factor Levels"
                help="In order matching the columns of the counts matrix:
                      ie WT,WT,Mut,Mut,Mut,WT..."/>
                
         <param name="labelData" type="text" size="100"
-               label="Sample Labels (no space)"
+               label="Sample Labels"
                help="In order matching the columns of the counts matrix:
                      ie Smpl1,Smpl2,Mut-Smpl1,Mut-Smpl2,Mut-Smpl3,Smpl3..."/>
                
