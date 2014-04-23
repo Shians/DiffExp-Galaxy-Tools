@@ -1,4 +1,4 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.7">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.8">
   <description>
     Analyse hairpin differential representation using edgeR
   </description>

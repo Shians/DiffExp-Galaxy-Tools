@@ -105,16 +105,16 @@ makeOut <- function(filename) {
 # Function has string input and generates both a pdf and png output strings
 imgOut <- function(filename) {
   assign(paste0(filename, "Png"), makeOut(paste0(filename,".png")), 
-         envir = .GlobalEnv)
+         envir=.GlobalEnv)
   assign(paste0(filename, "Pdf"), makeOut(paste0(filename,".pdf")),
-         envir = .GlobalEnv)
+         envir=.GlobalEnv)
 }
 
 # Create cat function default path set, default seperator empty and appending
 # true by default (Ripped straight from the cat function with altered argument
 # defaults)
-cata <- function(..., file = htmlPath, sep = "", fill = FALSE, labels = NULL, 
-                 append = TRUE) {
+cata <- function(..., file=htmlPath, sep="", fill=FALSE, labels=NULL, 
+                 append=TRUE) {
   if (is.character(file)) 
     if (file == "") 
       file <- stdout()
@@ -318,6 +318,12 @@ linkData <- data.frame(Label=character(), Link=character(),
                        stringsAsFactors=FALSE)
 imageData <- data.frame(Label=character(), Link=character(),
                         stringsAsFactors=FALSE)
+                        
+# Initialise vectors for storage of up/down/neutral regulated counts
+upCount <- numeric()
+downCount <- numeric()
+flatCount <- numeric()
+
 ################################################################################
 ### Data Processing
 ################################################################################
@@ -467,20 +473,30 @@ if (workMode=="classic") {
   top <- topTags(testData, n=Inf)
   topIDs <- top$table[(top$table$FDR < fdrThresh) &
                       (abs(top$table$logFC) > lfcThresh), 1]
+                      
   write.table(top, file=topOut, row.names=FALSE, sep="\t")
+  
   linkName <- paste0("Top Tags Table(", pairData[2], "-", pairData[1], 
                      ") (.tsv)")
   linkAddr <- paste0("toptag(", pairData[2], "-", pairData[1], ").tsv")
   linkData <- rbind(linkData, c(linkName, linkAddr))
   
+  upCount[1] <- sum(top$table$FDR < fdrThresh & top$table$logFC > lfcThresh)
+  downCount[1] <- sum(top$table$FDR < fdrThresh & 
+                      top$table$logFC < -lfcThresh)
+  flatCount[1] <- sum(top$table$FDR > fdrThresh |
+                      abs(top$table$logFC) < lfcThresh)
+  
+  
+  
   # Select hairpins with FDR < 0.05 to highlight on plot
   png(smearPng, width=600, height=600)
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
-                    fixed = TRUE)
+                    fixed=TRUE)
   plotSmear(testData, de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
-  abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+  abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ")")
   imgAddr <- paste0("smear(", pairData[2], "-", pairData[1],").png")
   imageData <- rbind(imageData, c(imgName, imgAddr))
@@ -489,14 +505,15 @@ if (workMode=="classic") {
   pdf(smearPdf)
   plotTitle <- gsub(".", " ", 
                     paste0("Smear Plot: ", pairData[2], "-", pairData[1]),
-                    fixed = TRUE)
+                    fixed=TRUE)
   plotSmear(testData, de.tags=topIDs, 
             pch=20, cex=1.0, main=plotTitle)
-  abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+  abline(h=c(-1, 0, 1), col=c("dodgerblue", "yellow", "dodgerblue"), lty=2)
   imgName <- paste0("Smear Plot(", pairData[2], "-", pairData[1], ") (.pdf)")
   imgAddr <- paste0("smear(", pairData[2], "-", pairData[1], ").pdf")
   linkData <- rbind(linkData, c(imgName, imgAddr))
   invisible(dev.off())
+  
 } else if (workMode=="glm") {
   # Generating design information
   factors <- factor(data$sample$group)
@@ -506,14 +523,15 @@ if (workMode=="classic") {
   
   # Split up contrasts seperated by comma into a vector
   contrastData <- unlist(strsplit(contrastData, split=","))
+  
   for (i in 1:length(contrastData)) {
     # Generate contrasts information
     contrasts <- makeContrasts(contrasts=contrastData[i], levels=design)
     
     # Fit negative bionomial GLM
-    fit = glmFit(data, design)
+    fit <- glmFit(data, design)
     # Carry out Likelihood ratio test
-    testData = glmLRT(fit, contrast=contrasts)
+    testData <- glmLRT(fit, contrast=contrasts)
     
     # Select hairpins with FDR < 0.05 to highlight on plot
     top <- topTags(testData, n=Inf)
@@ -524,6 +542,13 @@ if (workMode=="classic") {
     linkName <- paste0("Top Tags Table(", contrastData[i], ") (.tsv)")
     linkAddr <- paste0("toptag(", contrastData[i], ").tsv")
     linkData <- rbind(linkData, c(linkName, linkAddr))
+    
+    # Collect counts for differential representation
+    upCount[i] <- sum(top$table$FDR < fdrThresh & top$table$logFC > lfcThresh)
+    downCount[i] <- sum(top$table$FDR < fdrThresh & 
+                        top$table$logFC < -lfcThresh)
+    flatCount[i] <- sum(top$table$FDR > fdrThresh |
+                        abs(top$table$logFC) < lfcThresh)
     
     # Make a plot of logFC versus logCPM
     png(smearPng[i], height=600, width=600)
@@ -560,7 +585,7 @@ if (workMode=="classic") {
     
     if (wantRoast) {
       # Input preparaton for roast
-      nrot = 9999
+      nrot <- 9999
       set.seed(602214129)
       roastData <- mroast(data, index=geneList, design=design,
                          contrast=contrasts, nrot=nrot)
@@ -609,6 +634,13 @@ if (workMode=="classic") {
       dev.off()
     }
   }
+}
+
+sigDiff <- data.frame(Up=upCount, Flat=flatCount, Down=downCount)
+if (workMode == "glm") {
+  row.names(sigDiff) <- contrastData
+} else if (workMode == "classic") {
+  row.names(sigDiff) <- paste0(pairData[2], "-", pairData[1])
 }
 
 ID <- rownames(data$counts)
@@ -661,8 +693,7 @@ cata("The estimated common biological coefficient of variation (BCV) is: ",
      commonBCV, "<br />\n")
 
 cata("<h4>Output:</h4>\n")
-cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format. <br />\n")
+cata("PDF copies of JPEGS available in 'Plots' section.<br />\n")
 for (i in 1:nrow(imageData)) {
   if (grepl("barcode", imageData$Link[i])) {
     if (packageVersion("limma")<"3.19.19") {
@@ -678,6 +709,25 @@ for (i in 1:nrow(imageData)) {
 }
 cata("<br />\n")
 
+cata("<h4>Differential Representation Counts:</h4>\n")
+
+cata("<table border=\"1\" cellpadding=\"4\">\n")
+cata("<tr>\n")
+TableItem()
+for (i in colnames(sigDiff)) {
+  TableHeadItem(i)
+}
+cata("</tr>\n")
+for (i in 1:nrow(sigDiff)) {
+  cata("<tr>\n")
+  TableHeadItem(unmake.names(row.names(sigDiff)[i]))
+  for (j in 1:ncol(sigDiff)) {
+    TableItem(as.character(sigDiff[i, j]))
+  }
+  cata("</tr>\n")
+}
+cata("</table>")
+
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)) {
   if (!grepl(".tsv", linkData$Link[i])) {
@@ -692,11 +742,10 @@ for (i in 1:nrow(linkData)) {
   }
 }
 
-cata("<p>alt-click any of the links to download the file, or click the name ")
-cata("of this task in the galaxy history panel and click on the floppy ")
-cata("disk icon to download all files in a zip archive.</p>\n")
-cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
-cata("or other spreadsheet programs</p>\n")
+cata("<p>Alt-click links to download file.</p>\n")
+cata("<p>Click floppy disc icon associated history item to download ")
+cata("all files.</p>\n")
+cata("<p>.tsv files can be viewed in Excel or any spreadsheet program.</p>\n")
 
 cata("<h4>Additional Information:</h4>\n")
 
@@ -707,9 +756,9 @@ if (inputType == "fastq") {
 }
 
 if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Hairpins that do not have more than", cpmReq,
-                   "CPM in at least", sampleReq, "samples are considered",
-                   "insignificant and filtered out.")
+  tempStr <- paste("Hairpins with less than", cpmReq,
+                   "CPM in at least", sampleReq, "samples are insignificant",
+                   "and filtered out.")
   ListItem(tempStr)
   filterProp <- round(filteredCount/preFilterCount*100, digits=2)
   tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
@@ -722,8 +771,6 @@ if (workMode == "classic") {
 } else if (workMode == "glm") {
   ListItem("A generalised linear model was fitted to each hairpin.")
 }
-
-
 
 cit <- character()
 link <-character()
