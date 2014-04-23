@@ -333,6 +333,7 @@ for (i in 1:length(contrastData)) {
                        lfc=lfcReq)
   sumStatus <- summary(status)
   
+  # Collect counts for differential expression
   upCount[i] <- sumStatus["1",]
   downCount[i] <- sumStatus["-1",]
   flatCount[i] <- sumStatus["0",]
@@ -405,11 +406,29 @@ HtmlHead("Limma Output")
 
 cata("<body>\n")
 cata("<h3>Limma Analysis Output:</h3>\n")
-cata("All images displayed have PDF copy at the bottom of the page, these can ")
-cata("exported in a pdf viewer to high resolution image format. <br />\n")
+cata("PDF copies of JPEGS available in 'Plots' section.<br />\n")
 for (i in 1:nrow(imageData)) {
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
+
+cata("<h4>Differential Expression Counts:</h4>\n")
+
+cata("<table border=\"1\" cellpadding=\"4\">\n")
+cata("<tr>\n")
+TableItem()
+for (i in colnames(sigDiff)) {
+  TableHeadItem(i)
+}
+cata("</tr>\n")
+for (i in 1:nrow(sigDiff)) {
+  cata("<tr>\n")
+  TableHeadItem(unmake.names(row.names(sigDiff)[i]))
+  for (j in 1:ncol(sigDiff)) {
+    TableItem(as.character(sigDiff[i, j]))
+  }
+  cata("</tr>\n")
+}
+cata("</table>")
 
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)) {
@@ -425,18 +444,17 @@ for (i in 1:nrow(linkData)) {
   }
 }
 
-cata("<p>alt-click any of the links to download the file, or click the name ")
-cata("of this task in the galaxy history panel and click on the floppy ")
-cata("disk icon to download all files in a zip archive.</p>\n")
-cata("<p>.tsv files are tab seperated files that can be viewed using Excel ")
-cata("or other spreadsheet programs</p>\n")
+cata("<p>Alt-click links to download file.</p>\n")
+cata("<p>Click floppy disc icon associated history item to download ")
+cata("all files.</p>\n")
+cata("<p>.tsv files can be viewed in Excel or any spreadsheet program.</p>\n")
 
 cata("<h4>Additional Information</h4>\n")
 cata("<ul>\n")
 if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Genes that do not have more than", cpmReq,
-                   "CPM in at least", sampleReq, "samples are considered",
-                   "unexpressed and filtered out.")
+  tempStr <- paste("Hairpins with less than", cpmReq,
+                   "CPM in at least", sampleReq, "samples are insignificant",
+                   "and filtered out.")
   ListItem(tempStr)
   filterProp <- round(filteredCount/preFilterCount*100, digits=2)
   tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
@@ -470,26 +488,11 @@ if (pAdjOpt!="none") {
 }
 cata("</ul>\n")
 
+cata("<h4>Summary of experimental data:</h4>\n")
 
-cata("<table border=\"1\">\n")
-cata("<tr>\n")
-TableItem()
-for (i in colnames(sigDiff)) {
-  TableHeadItem(i)
-}
-cata("</tr>\n")
-for (i in 1:nrow(sigDiff)) {
-  cata("<tr>\n")
-  TableHeadItem(unmake.names(row.names(sigDiff)[i]))
-  for (j in 1:ncol(sigDiff)) {
-    TableItem(as.character(sigDiff[i, j]))
-  }
-  cata("</tr>\n")
-}
-cata("</table>")
+cata("<p>*CHECK THAT SAMPLES ARE ASSOCIATED WITH CORRECT GROUP*</p>\n")
 
-cata("<h4>Summary of experimental data</h4>\n")
-cata("<table border=\"1\">\n")
+cata("<table border=\"1\" cellpadding=\"3\">\n")
 cata("<tr>\n")
 TableItem()
 for (i in names(factors)) {

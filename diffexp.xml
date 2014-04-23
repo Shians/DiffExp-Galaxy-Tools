@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.6">
+<tool id="diffexp" name="DiffExp" version="1.0.7">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
