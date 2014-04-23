@@ -42,6 +42,7 @@
 #       Smear Plot
 #       Barcode Plots (If Genewise testing was selected)
 #       Top Expression Table
+#       Feature Counts Table
 #       HTML file linking to the ouputs
 #
 # Author: Shian Su - registertonysu@gmail.com - Jan 2014
@@ -63,6 +64,14 @@ if (packageVersion("edgeR") < "3.5.23") {
 ################################################################################
 ### Function declarations
 ################################################################################
+
+# Function to load libaries without messages
+silentLibrary <- function(...) {
+  list <- c(...)
+  for (package in list){
+    suppressPackageStartupMessages(library(package, character.only=TRUE))
+  }
+}
 
 # Function to sanitise contrast equations so there are no whitespaces
 # surrounding the arithmetic operators, leading or trailing whitespace

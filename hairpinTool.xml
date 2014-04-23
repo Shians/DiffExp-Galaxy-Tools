@@ -242,6 +242,11 @@ barcodes, information about the samples and fastq file containing the hairpin
 reads. This tool will generate plots and tables for the analysis of differential
 representation.
 
+.. class:: infomark
+
+A tutorial of how to use this tool is available at:
+http://bioinf.wehi.edu.au/shRNAseq/galaxy.html
+
 -----
 
 .. class:: infomark
