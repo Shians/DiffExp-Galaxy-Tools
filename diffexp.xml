@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.7">
+<tool id="diffexp" name="DiffExp" version="1.0.8">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -365,6 +365,8 @@ Section 1.2 in the User's Guide for more detail.
 	* McCarthy DJ, Chen Y and Smyth GK (2012). Differential expression analysis 
 	  of multifactor RNA-Seq experiments with respect to biological variation. 
 	  Nucleic Acids Research 40, 4288-4297
+	  
+Report problems to: su.s@wehi.edu.au
 
 .. _edgeR: http://www.bioconductor.org/packages/release/bioc/html/edgeR.html
 .. _limma: http://www.bioconductor.org/packages/release/bioc/html/limma.html

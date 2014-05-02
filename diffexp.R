@@ -35,6 +35,10 @@ library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
 
+if (packageVersion("limma") < "3.20.1") {
+  stop("Please update 'limma' to version >= 3.20.1 to run this tool")
+}
+
 ################################################################################
 ### Function Delcaration
 ################################################################################
@@ -198,7 +202,8 @@ for (i in 1:length(contrastData)) {
   maOutPng[i] <- makeOut(paste0("maplot(", contrastData[i], ").png"))
   topOut[i] <- makeOut(paste0("toptab(", contrastData[i], ").tsv"))
 }                         # Save output paths for each contrast as vectors
-rdaOut <- makeOut("objectDump.rda")
+rdaOut <- makeOut("RData.rda")
+sessionOut <- makeOut("session_info.txt")
 
 # Initialise data for html links and images, data frame with columns Label and 
 # Link
@@ -331,6 +336,7 @@ for (i in 1:length(contrastData)) {
   
   status = decideTests(voomFit[, i], adjust.method=pAdjOpt, p.value=pValReq,
                        lfc=lfcReq)
+                       
   sumStatus <- summary(status)
   
   # Collect counts for differential expression
@@ -349,9 +355,9 @@ for (i in 1:length(contrastData)) {
   
   # Plot MA (log ratios vs mean average) using limma package on weighted data
   pdf(maOutPdf[i])
-  limma::plotMA(voomFit, status=status, array=i,
+  limma::plotMA(voomFit, status=status, coef=i,
                 main=paste("MA Plot:", unmake.names(contrastData[i])), 
-                col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
+                col=c("black", "green", "firebrick"), values=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -362,9 +368,9 @@ for (i in 1:length(contrastData)) {
   invisible(dev.off())
   
   png(maOutPng[i], height=600, width=600)
-  limma::plotMA(voomFit, status=status, array=i,
+  limma::plotMA(voomFit, status=status, coef=i,
                 main=paste("MA Plot:", unmake.names(contrastData[i])), 
-                col=c("black", "green", "firebrick"), value=c("0", "1", "-1"),
+                col=c("black", "green", "firebrick"), values=c("0", "1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -387,8 +393,12 @@ if (wantRda) {
     save(data, status, vData, labels, factors, voomFit, top, contrasts, design,
          file=rdaOut, ascii=TRUE)
   }
-  linkData <- rbind(linkData, c("RData (.rda)", "objectDump.rda"))
+  linkData <- rbind(linkData, c("RData (.rda)", "RData.rda"))
 }
+
+# Record session info
+writeLines(capture.output(sessionInfo()), sessionOut)
+linkData <- rbind(linkData, c("Session Info", "session_info.txt"))
 
 # Record ending time and calculate total run time
 timeEnd <- as.character(Sys.time())
@@ -432,7 +442,7 @@ cata("</table>")
 
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)) {
-  if (!grepl(".tsv", linkData$Link[i])) {
+  if (grepl(".pdf", linkData$Link[i])) {
     HtmlLink(linkData$Link[i], linkData$Label[i])
   }
 }
@@ -441,6 +451,15 @@ cata("<h4>Tables:</h4>\n")
 for (i in 1:nrow(linkData)) {
   if (grepl(".tsv", linkData$Link[i])) {
     HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
+}
+
+if (wantRda) {
+  cata("<h4>R Data Object:</h4>\n")
+  for (i in 1:nrow(linkData)) {
+    if (grepl(".rda", linkData$Link[i])) {
+      HtmlLink(linkData$Link[i], linkData$Label[i])
+    }
   }
 }
 
@@ -575,6 +594,14 @@ ListItem(cit[5])
 ListItem(cit[6])
 ListItem(cit[7])
 cata("</ol>\n")
+
+cata("<p>Report problems to: su.s@wehi.edu.au</p>\n")
+
+for (i in 1:nrow(linkData)) {
+  if (grepl("session_info", linkData$Link[i])) {
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
+}
 
 cata("<table border=\"0\">\n")
 cata("<tr>\n")
