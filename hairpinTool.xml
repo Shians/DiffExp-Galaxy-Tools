@@ -1,4 +1,4 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.8">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.9">
   <description>
     Analyse hairpin differential representation using edgeR
   </description>
@@ -405,6 +405,8 @@ Section 1.2 in the User's Guide for more detail.
 	* McCarthy DJ, Chen Y and Smyth GK (2012). Differential expression analysis 
 	  of multifactor RNA-Seq experiments with respect to biological variation. 
 	  Nucleic Acids Research 40, 4288-4297
+	  
+Report problems to: su.s@wehi.edu.au
 
 .. _edgeR: http://www.bioconductor.org/packages/release/bioc/html/edgeR.html
 .. _limma: http://www.bioconductor.org/packages/release/bioc/html/limma.html

@@ -58,7 +58,11 @@ library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
 
 if (packageVersion("edgeR") < "3.5.23") {
-  message("Please update 'edgeR' to version >= 3.5.23 to run this script")
+  stop("Please update 'edgeR' to version >= 3.5.23 to run this tool")
+}
+
+if (packageVersion("limma")<"3.19.19") {
+  message("Update 'limma' to version >= 3.19.19 to see updated barcode graphs")
 }
 
 ################################################################################
@@ -305,12 +309,13 @@ if (workMode == "classic") {
     smearPng[i] <- makeOut(paste0("smear(", contrastData[i], ").png"))
     smearPdf[i] <- makeOut(paste0("smear(", contrastData[i], ").pdf"))
     topOut[i] <- makeOut(paste0("toptag(", contrastData[i], ").tsv"))
-    roastOut[i] <- makeOut(paste0("roast(", contrastData[i], ").tsv"))
+    roastOut[i] <- makeOut(paste0("gene_level(", contrastData[i], ").tsv"))
     barcodePng[i] <- makeOut(paste0("barcode(", contrastData[i], ").png"))
     barcodePdf[i] <- makeOut(paste0("barcode(", contrastData[i], ").pdf"))
   }
 }
 countsOut <- makeOut("counts.tsv")
+sessionOut <- makeOut("session_info.txt")
 
 # Initialise data for html links and images, table with the link label and
 # link address
@@ -346,7 +351,7 @@ if (workMode=="glm") {
     selectVals <- as.numeric(unique(selectVals))
   } else {
     selectVals <- gsub(" ", "", selectVals, fixed=TRUE)
-    selectVals <- unlist(strsplit(selectVals, " "))
+    selectVals <- unlist(strsplit(selectVals, ","))
   }                                                           
 }
                                                   
@@ -593,7 +598,7 @@ if (workMode=="classic") {
       write.table(roastData, file=roastOut[i], row.names=FALSE, sep="\t")
       linkName <- paste0("Gene Level Analysis Table(", contrastData[i], 
                          ") (.tsv)")
-      linkAddr <- paste0("roast(", contrastData[i], ").tsv")
+      linkAddr <- paste0("gene_level(", contrastData[i], ").tsv")
       linkData <- rbind(linkData, c(linkName, linkAddr))
       if (selectOpt=="rank") {
         selectedGenes <- rownames(roastData)[selectVals]
@@ -652,6 +657,10 @@ write.table(outputCounts, file=countsOut, row.names=FALSE, sep="\t",
 linkName <- "Counts table (.tsv)"
 linkAddr <- "counts.tsv"
 linkData <- rbind(linkData, c(linkName, linkAddr))
+
+# Record session info
+writeLines(capture.output(sessionInfo()), sessionOut)
+linkData <- rbind(linkData, c("Session Info", "session_info.txt"))
 
 # Record ending time and calculate total run time
 timeEnd <- as.character(Sys.time())
@@ -733,7 +742,7 @@ cata("</table>")
 
 cata("<h4>Plots:</h4>\n")
 for (i in 1:nrow(linkData)) {
-  if (!grepl(".tsv", linkData$Link[i])) {
+  if (grepl(".pdf", linkData$Link[i])) {
     HtmlLink(linkData$Link[i], linkData$Label[i])
   }
 }
@@ -809,6 +818,14 @@ ListItem(cit[2])
 ListItem(cit[3])
 ListItem(cit[4])
 cata("</ol>\n")
+
+cata("<p>Report problems to: su.s@wehi.edu.au</p>\n")
+
+for (i in 1:nrow(linkData)) {
+  if (grepl("session_info", linkData$Link[i])) {
+    HtmlLink(linkData$Link[i], linkData$Label[i])
+  }
+}
 
 cata("<table border=\"0\">\n")
 cata("<tr>\n")
