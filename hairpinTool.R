@@ -636,6 +636,7 @@ if (workMode=="classic") {
   }
 }
 
+# Generate data frame of the significant differences
 sigDiff <- data.frame(Up=upCount, Flat=flatCount, Down=downCount)
 if (workMode == "glm") {
   row.names(sigDiff) <- contrastData
@@ -643,9 +644,11 @@ if (workMode == "glm") {
   row.names(sigDiff) <- paste0(pairData[2], "-", pairData[1])
 }
 
+# Output table of summarised counts
 ID <- rownames(data$counts)
 outputCounts <- cbind(ID, data$counts)
-write.table(outputCounts, file=countsOut, row.names=FALSE, sep="\t")
+write.table(outputCounts, file=countsOut, row.names=FALSE, sep="\t",
+            quote=FALSE)
 linkName <- "Counts table (.tsv)"
 linkAddr <- "counts.tsv"
 linkData <- rbind(linkData, c(linkName, linkAddr))
@@ -756,7 +759,7 @@ if (inputType == "fastq") {
 }
 
 if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Hairpins with less than", cpmReq,
+  tempStr <- paste("Hairpins without more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are insignificant",
                    "and filtered out.")
   ListItem(tempStr)

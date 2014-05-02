@@ -452,7 +452,7 @@ cata("<p>.tsv files can be viewed in Excel or any spreadsheet program.</p>\n")
 cata("<h4>Additional Information</h4>\n")
 cata("<ul>\n")
 if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Hairpins with less than", cpmReq,
+  tempStr <- paste("Hairpins without more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are insignificant",
                    "and filtered out.")
   ListItem(tempStr)
