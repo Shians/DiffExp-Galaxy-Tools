@@ -470,6 +470,17 @@ newEntry <- c("MDS Plot (.pdf)", "mds.pdf")
 linkData <- rbind(linkData, newEntry)
 invisible(dev.off())
 
+# BCV Plot
+png(bcvPng, width=600, height=600)
+plotBCV(data, main="BCV Plot")
+imageData <- rbind(imageData, c("BCV Plot", "bcv.png"))
+invisible(dev.off())
+
+pdf(bcvPdf)
+plotBCV(data, main="BCV Plot")
+newEntry <- c("BCV Plot (.pdf)", "bcv.pdf")
+invisible(dev.off())
+
 if (workMode=="classic") {
   # Assess differential representation using classic exact testing methodology 
   # in edgeR
