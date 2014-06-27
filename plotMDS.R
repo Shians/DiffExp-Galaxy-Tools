@@ -38,6 +38,8 @@ labelData <- sanitiseGroups(labelData)
 
 # Load in data
 counts <- read.table(countPath, header=TRUE, sep="\t")
+row.names(counts) <- counts$GeneID
+counts <- counts[ , !(colnames(counts)=="GeneID")]
 
 # Extract counts
 data <- list()

@@ -1,4 +1,4 @@
-<tool id="plotmds" name="Plot MDS" version="1.0.2">
+<tool id="plotmds" name="Plot MDS" version="1.0.3">
     <description>
         Create a multidimensional scaling plot to identify outliers in samples
     </description>
@@ -53,7 +53,7 @@ and columns corresponding to the feature count in particular samples.
 Values must be tab separated and there must be a row for the sample/column
 labels and a column for the row/gene labels.::
 
-    "Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
+  "GeneID"  "Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
   "27395"		1699	1528	1463	1441	1495
   "18777"		1905	1744	1345    1291    1346
   "150370"	6	8	4	5	5
