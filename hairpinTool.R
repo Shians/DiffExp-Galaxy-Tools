@@ -57,7 +57,7 @@ library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
 
-if (packageVersion("edgeR") < "3.5.23") {
+if (packageVersion("edgeR") < "3.5.27") {
   stop("Please update 'edgeR' to version >= 3.5.23 to run this tool")
 }
 
