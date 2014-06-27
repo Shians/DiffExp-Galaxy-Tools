@@ -1,4 +1,4 @@
-<tool id="diffexp" name="DiffExp" version="1.0.8">
+<tool id="diffexp" name="DiffExp" version="1.0.9">
   <description>
       Perform differential expression analysis using the edgeR and limma
       packages
@@ -216,7 +216,7 @@ labels and a column for the row/gene labels.
 
 Example::
 
-	"Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
+	"GeneID"  "Smpl1"	"Smpl2"	"Smpl3"	"Smpl4"	"Smpl5"
 	"27395"	1699	1528	1463	1441	1495
 	"18777"	1905	1744	1345	1291	1346
 	"15037"	6	8	4	5	5
@@ -229,10 +229,6 @@ Example::
 	"71096"	0	0	2	1	6
 	"59014"	1466	1426	1296	1097	1175
 	...
-
-NOTE: The column labels look misaligned with the columns due to the
-presence of row labels, this is read correctly into R which proccesses the
-data.
 
 **Gene Annotations:**
 Optional input for gene annotations, this can contain more

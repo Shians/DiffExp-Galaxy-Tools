@@ -219,6 +219,9 @@ flatCount <- numeric()
                         
 # Read in counts and geneanno data
 counts <- read.table(countPath, header=TRUE, sep="\t")
+row.names(counts) <- counts$GeneID
+counts <- counts[ , !(colnames(counts)=="GeneID")]
+countsRows <- nrow(counts)
 if (haveAnno) {
   geneanno <- read.table(annoPath, header=TRUE, sep="\t")
 }
