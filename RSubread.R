@@ -253,7 +253,11 @@ for (i in 1:length(uniqueSamples)){
   }
 }
 
-write.table(counts$counts, file=countsOut, sep="\t")
+GeneID <- row.names(counts$counts)
+
+counts$counts <- cbind(GeneID, counts$counts)
+
+write.table(counts$counts, file=countsOut, sep="\t", row.names=FALSE)
 
 # Load appropriate annotation database
 if (annoOpt=="hg19"){
@@ -274,7 +278,7 @@ geneanno <- cbind(counts$anno,
                   "GeneName"=geneNames[match(egids, geneNames[,1]),2],
                   "Chr"=chr[match(egids, chr[,1]),2])
 
-write.table(geneanno, file=geneannoOut, sep="\t")
+write.table(geneanno, file=geneannoOut, sep="\t", row.names=FALSE)
 
 if (exists("buildOutput")) {
   buildOutput <- sapply(buildOutput, HtmlSpacing)

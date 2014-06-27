@@ -1,4 +1,4 @@
-<tool id="Rsubread" name="Rsubread Mapping" version="1.0.2">
+<tool id="Rsubread" name="Rsubread Mapping" version="1.0.3">
   <description>
     Produce table of feature counts using Rsubread.
   </description>
@@ -154,8 +154,8 @@
   </inputs>
 
   <outputs>
-    <data format="tabular" name="countsOut" label="Feature Counts"/>
-    <data format="tabular" name="geneannoOut" label="Gene Annotations"/>
+    <data format="tsv" name="countsOut" label="Feature Counts"/>
+    <data format="tsv" name="geneannoOut" label="Gene Annotations"/>
     <data format="html" name="summary" label="RSubread Summary"/>
   </outputs>
 
