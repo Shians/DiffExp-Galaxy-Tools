@@ -1,4 +1,4 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.10">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.0.11">
   <description>
     Analyse hairpin differential representation using edgeR
   </description>
@@ -6,6 +6,7 @@
   <requirements>
     <requirement type="R-module" version="3.6.2">edgeR</requirement>
     <requirement type="R-module" version="3.20.7">limma</requirement>
+    <requirement type="package" version="3.0.3">R_3_0_3</requirement>
   </requirements>
   
   <stdio>

@@ -35,6 +35,7 @@
 #                            plots
 #       19.selectVals       -String specifying members selected for barcode
 #                            plots
+#    ###
 #
 # OUT:  Bar Plot of Counts Per Index
 #       Bar Plot of Counts Per Hairpin
@@ -359,6 +360,7 @@ if (inputType=="fastq") {
   # Use EdgeR hairpin process and capture outputs
   hpReadout <- capture.output(
   data <- processHairpinReads(fastqPath, samplePath, annoPath,
+                              barcodeStart=barStart, barcodeEnd=barEnd,
                               hairpinStart=hpStart, hairpinEnd=hpEnd, 
                               verbose=TRUE)
   )
