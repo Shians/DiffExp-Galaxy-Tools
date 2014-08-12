@@ -404,6 +404,14 @@ if (inputType=="fastq") {
   data$samples$group <- make.names(data$samples$group)
 }
 
+# Filter out any samples with zero counts
+if (any(data$samples$lib.size == 0)) {
+  sampleSel <- data$samples$lib.size != 0
+  filteredSamples <- paste(data$samples$ID[!sampleSel], collapse=", ")
+  data$counts <- data$counts[, sampleSel]
+  data$samples <- data$samples[sampleSel, ]
+}
+
 # Filter hairpins with low counts
 preFilterCount <- nrow(data)
 sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
@@ -788,6 +796,12 @@ if (cpmReq!=0 && sampleReq!=0) {
   filterProp <- round(filteredCount/preFilterCount*100, digits=2)
   tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
                    "%) hairpins were filtered out for low count-per-million.")
+  ListItem(tempStr)
+}
+
+if (exists("filteredSamples")) {
+  tempStr <- paste("The following samples were filtered out for having zero",
+                   "library size: ", filteredSamples)
   ListItem(tempStr)
 }
 
