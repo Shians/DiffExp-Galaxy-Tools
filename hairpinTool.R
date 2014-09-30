@@ -359,7 +359,9 @@ if (workMode=="glm") {
 if (inputType=="fastq") {
   # Use EdgeR hairpin process and capture outputs
   hpReadout <- capture.output(
-  data <- processHairpinReads(fastqPath, samplePath, annoPath,
+  data <- processHairpinReads(readfile=fastqPath, 
+                              barcodefile=samplePath, 
+                              hairpinfile=annoPath,
                               barcodeStart=barStart, barcodeEnd=barEnd,
                               hairpinStart=hpStart, hairpinEnd=hpEnd, 
                               verbose=TRUE)
