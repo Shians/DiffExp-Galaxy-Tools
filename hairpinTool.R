@@ -1,39 +1,47 @@
 # ARGS: 1.inputType         -String specifying format of input (fastq or table)
-#    IF inputType is "fastQ":
+#    IF inputType is "fastq" or "pairedFastq:
 #       2*.fastqPath        -One or more strings specifying path to fastq files
-#       2.annoPath        -String specifying path to hairpin annotation table
+#       2.annoPath          -String specifying path to hairpin annotation table
 #       3.samplePath        -String specifying path to sample annotation table
 #       4.barStart          -Integer specifying starting position of barcode
 #       5.barEnd            -Integer specifying ending position of barcode
-#       6.hpStart           -Integer specifying startins position of hairpin
-#                            unique region
-#       7.hpEnd             -Integer specifying ending position of hairpin
-#                            unique region
 #    ###   
+#    IF inputType is "pairedFastq":
+#       6.barStartRev       -Integer specifying starting position of barcode
+#                            on reverse end
+#       7.barEndRev         -Integer specifying ending position of barcode
+#                            on reverse end
+#    ### 
+#       8.hpStart           -Integer specifying startins position of hairpin
+#                            unique region
+#       9.hpEnd             -Integer specifying ending position of hairpin
+#                            unique region
 #    IF inputType is "counts":
 #       2.countPath         -String specifying path to count table
 #       3.annoPath          -String specifying path to hairpin annotation table
 #       4.samplePath        -String specifying path to sample annotation table
 #    ###
-#       8.cpmReq            -Float specifying cpm requirement
-#       9.sampleReq         -Integer specifying cpm requirement
-#       10.fdrThresh        -Float specifying the FDR requirement
-#       11.lfcThresh        -Float specifying the log-fold-change requirement
-#       12.workMode         -String specifying exact test or GLM usage
-#       13.htmlPath         -String specifying path to HTML file
-#       14.folderPath       -STring specifying path to folder for output
+#       10.secFactName      -String specifying name of secondary factor
+#       11.cpmReq           -Float specifying cpm requirement
+#       12.sampleReq        -Integer specifying cpm requirement
+#       13.readReq          -Integer specifying read requirement
+#       14.fdrThresh        -Float specifying the FDR requirement
+#       15.lfcThresh        -Float specifying the log-fold-change requirement
+#       16.workMode         -String specifying exact test or GLM usage
+#       17.htmlPath         -String specifying path to HTML file
+#       18.folderPath       -String specifying path to folder for output
 #    IF workMode is "classic" (exact test)
-#       15.pairData[2]      -String specifying first group for exact test
-#       16.pairData[1]      -String specifying second group for exact test
+#       19.pairData[2]      -String specifying first group for exact test
+#       20.pairData[1]      -String specifying second group for exact test
 #    ###
 #    IF workMode is "glm"
-#       15.contrastData     -String specifying contrasts to be made
-#       16.roastOpt         -String specifying usage of gene-wise tests
-#       17.hairpinReq       -String specifying hairpin requirement for gene-
+#       19.contrastData     -String specifying contrasts to be made
+#       20.roastOpt         -String specifying usage of gene-wise tests
+#       21.hairpinReq       -String specifying hairpin requirement for gene-
 #                            wise test
-#       18.selectOpt        -String specifying type of selection for barcode
+#       22.selectOpt        -String specifying type of selection for barcode
 #                            plots
-#       19.selectVals       -String specifying members selected for barcode
+#       23.selectVals       -String specifying members selected for barcode
 #                            plots
 #    ###
 #
@@ -58,12 +66,12 @@ library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
 
-if (packageVersion("edgeR") < "3.5.27") {
-  stop("Please update 'edgeR' to version >= 3.5.23 to run this tool")
+if (packageVersion("edgeR") < "3.7.17") {
+  stop("Please update 'edgeR' to version >= 3.7.17 to run this tool")
 }
 
-if (packageVersion("limma")<"3.19.19") {
-  message("Update 'limma' to version >= 3.19.19 to see updated barcode graphs")
+if (packageVersion("limma")<"3.21.16") {
+  message("Update 'limma' to version >= 3.21.16 to see updated barcode graphs")
 }
 
 ################################################################################
@@ -171,103 +179,153 @@ TableHeadItem <- function(...) {
 # Grabbing arguments from command line
 argv <- commandArgs(TRUE)
 
-# Remove fastq file paths after collecting from argument vector
 inputType <- as.character(argv[1])
-if (inputType=="fastq") {
+if (inputType == "fastq") {
+
   fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq::", argv)], 
                                  fixed=TRUE))
-  argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
+
+  # Remove fastq paths
+  argv <- argv[!grepl("fastq::", argv, fixed=TRUE)] 
+
+  fastqPathRev <- NULL
   annoPath <- as.character(argv[2])
   samplePath <- as.character(argv[3])
   barStart <- as.numeric(argv[4])
   barEnd <- as.numeric(argv[5])
-  hpStart <- as.numeric(argv[6])
-  hpEnd <- as.numeric(argv[7])
-} else if (inputType=="counts") {
+  barStartRev <- NULL
+  barStartRev <- NULL
+  hpStart <- as.numeric(argv[8])
+  hpEnd <- as.numeric(argv[9])
+} else if (inputType=="pairedFastq") {
+
+  fastqPath <- as.character(gsub("fastq::", "", argv[grepl("fastq::", argv)], 
+                                 fixed=TRUE))
+  
+  fastqPathRev <- as.character(gsub("fastqRev::", "", 
+                               argv[grepl("fastqRev::", argv)], fixed=TRUE))
+
+  # Remove fastq paths
+  argv <- argv[!grepl("fastq::", argv, fixed=TRUE)]
+  argv <- argv[!grepl("fastqRev::", argv, fixed=TRUE)] 
+
+  annoPath <- as.character(argv[2])
+  samplePath <- as.character(argv[3])
+  barStart <- as.numeric(argv[4])
+  barEnd <- as.numeric(argv[5])
+  barStartRev <- as.numeric(argv[6])
+  barEndRev <- as.numeric(argv[7])
+  hpStart <- as.numeric(argv[8])
+  hpEnd <- as.numeric(argv[9])
+} else if (inputType == "counts") {
   countPath <- as.character(argv[2])
   annoPath <- as.character(argv[3])
   samplePath <- as.character(argv[4])
 }
-  
-cpmReq <- as.numeric(argv[8])
-sampleReq <- as.numeric(argv[9])
-fdrThresh <- as.numeric(argv[10])
-lfcThresh <- as.numeric(argv[11])
-workMode <- as.character(argv[12])
-htmlPath <- as.character(argv[13])
-folderPath <- as.character(argv[14])
 
-if (workMode=="classic") {
+secFactName <- as.character(argv[10])
+cpmReq <- as.numeric(argv[11])
+sampleReq <- as.numeric(argv[12])
+readReq <- as.numeric(argv[13])
+fdrThresh <- as.numeric(argv[14])
+lfcThresh <- as.numeric(argv[15])
+selectDirection <- as.character(argv[16])
+workMode <- as.character(argv[17])
+htmlPath <- as.character(argv[18])
+folderPath <- as.character(argv[19])
+
+if (workMode == "classic") {
   pairData <- character()
-  pairData[2] <- as.character(argv[15])
-  pairData[1] <- as.character(argv[16])
-} else if (workMode=="glm") {
-  contrastData <- as.character(argv[15])
-  roastOpt <- as.character(argv[16])
-  hairpinReq <- as.numeric(argv[17])
-  selectOpt <- as.character(argv[18])
-  selectVals <- as.character(argv[19])
+  pairData[2] <- as.character(argv[20])
+  pairData[1] <- as.character(argv[21])
+} else if (workMode == "glm") {
+  contrastData <- as.character(argv[20])
+  roastOpt <- as.character(argv[21])
+  hairpinReq <- as.numeric(argv[22])
+  selectOpt <- as.character(argv[23])
+  selectVals <- as.character(argv[24])
 }
 
 # Read in inputs
 
 samples <- read.table(samplePath, header=TRUE, sep="\t")
+
 anno <- read.table(annoPath, header=TRUE, sep="\t")
-if (inputType=="counts") {
+
+if (inputType == "counts") {
   counts <- read.table(countPath, header=TRUE, sep="\t")
 }
 
 ###################### Check inputs for correctness ############################
 samples$ID <- make.names(samples$ID)
 
-if (!any(grepl("group", names(samples)))) {
+if ( !any(grepl("group", names(samples))) ) {
   stop("'group' column not specified in sample annotation file")
 } # Check if grouping variable has been specified
 
-if (any(table(samples$ID)>1)){
+if (secFactName != "none") {
+  if ( !any(grepl(secFactName, names(samples))) ) {
+  tempStr <- paste0("Second factor specified as \"", secFactName, "\" but ",
+                    "no such column name found in sample annotation file")
+  stop(tempStr)
+  } # Check if specified secondary factor is present 
+}
+
+
+if ( any(table(samples$ID) > 1) ){
   tab <- table(samples$ID)
-  offenders <- paste(names(tab[tab>1]), collapse=", ")
+  offenders <- paste(names(tab[tab > 1]), collapse=", ")
   offenders <- unmake.names(offenders)
   stop("'ID' column of sample annotation must have unique values, values ",
        offenders, " are repeated")
 } # Check that IDs in sample annotation are unique
 
-if (inputType=="fastq") {
+if (inputType == "fastq" || inputType == "pairedFastq") {
   
-  if (any(table(anno$ID)>1)){
+  if ( any(table(anno$ID) > 1) ){
     tab <- table(anno$ID)
     offenders <- paste(names(tab[tab>1]), collapse=", ")
     stop("'ID' column of hairpin annotation must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in hairpin annotation are unique
   
-} else if (inputType=="counts") {
-  if (any(is.na(match(samples$ID, colnames(counts))))) {
+} else if (inputType == "counts") {
+  # The first element of the colnames will be 'ID' and should not match
+  idFromSample <- samples$ID
+  idFromTable <- colnames(counts)[-1]
+  if (any(is.na(match(idFromTable, idFromSample)))) {
     stop("not all samples have groups specified")
   } # Check that a group has be specifed for each sample
   
-  if (any(table(counts$ID)>1)){
+  if ( any(table(counts$ID) > 1) ){
     tab <- table(counts$ID)
     offenders <- paste(names(tab[tab>1]), collapse=", ")
     stop("'ID' column of count table must have unique values, values ",
     offenders, " are repeated")
   } # Check that IDs in count table are unique
 }
-if (workMode=="glm") {
+if (workMode == "glm") {
   if (roastOpt == "yes") {
     if (is.na(match("Gene", colnames(anno)))) {
       tempStr <- paste("Gene-wise tests selected but'Gene' column not",
-      "specified in hairpin annotation file")
+                       "specified in hairpin annotation file")
       stop(tempStr)
     }
+  }
+}
+
+if (secFactName != "none") {
+  if (workMode != "glm") {
+    tempStr <- paste("only glm analysis type possible when secondary factor",
+                     "used, please change appropriate option.")
   }
 }
 
 ################################################################################
 
 # Process arguments
-if (workMode=="glm") {
-  if (roastOpt=="yes") {
+if (workMode == "glm") {
+  if (roastOpt == "yes") {
     wantRoast <- TRUE
   } else {
     wantRoast <- FALSE
@@ -299,7 +357,7 @@ if (workMode == "classic") {
   smearPng <- makeOut(paste0("smear(", pairData[2], "-", pairData[1],").png"))
   smearPdf <- makeOut(paste0("smear(", pairData[2], "-", pairData[1],").pdf"))
   topOut <- makeOut(paste0("toptag(", pairData[2], "-", pairData[1],").tsv"))
-} else if (workMode=="glm") {
+} else if (workMode == "glm") {
   smearPng <- character()
   smearPdf <- character()
   topOut <- character()
@@ -335,8 +393,8 @@ flatCount <- numeric()
 ################################################################################
 
 # Transform gene selection from string into index values for mroast
-if (workMode=="glm") {
-  if (selectOpt=="rank") {
+if (workMode == "glm") {
+  if (selectOpt == "rank") {
     selectVals <- gsub(" ", "", selectVals, fixed=TRUE)
     selectVals <- unlist(strsplit(selectVals, ","))
     
@@ -356,33 +414,45 @@ if (workMode=="glm") {
   }                                                           
 }
                                                   
-if (inputType=="fastq") {
+if (inputType == "fastq" || inputType == "pairedFastq") {
   # Use EdgeR hairpin process and capture outputs
   hpReadout <- capture.output(
-  data <- processHairpinReads(readfile=fastqPath, 
-                              barcodefile=samplePath, 
-                              hairpinfile=annoPath,
-                              barcodeStart=barStart, barcodeEnd=barEnd,
-                              hairpinStart=hpStart, hairpinEnd=hpEnd, 
-                              verbose=TRUE)
+  data <- processAmplicons(readfile=fastqPath, readfile2=fastqPathRev,
+                            barcodefile=samplePath, 
+                            hairpinfile=annoPath,
+                            barcodeStart=barStart, barcodeEnd=barEnd,
+                            barcodeStartRev=barStartRev, 
+                            barcodeEndRev=barEndRev,
+                            hairpinStart=hpStart, hairpinEnd=hpEnd, 
+                            verbose=TRUE)
   )
-  
+
   # Remove function output entries that show processing data or is empty
   hpReadout <- hpReadout[hpReadout!=""]
   hpReadout <- hpReadout[!grepl("Processing", hpReadout)]
   hpReadout <- hpReadout[!grepl("in file", hpReadout)]
   hpReadout <- gsub(" -- ", "", hpReadout, fixed=TRUE)
-  
+
   # Make the names of groups syntactically valid (replace spaces with periods)
   data$samples$group <- make.names(data$samples$group)
-} else if (inputType=="counts") {
+  if (secFactName != "none") {
+    data$samples[[secFactName]] <- make.names(data$samples[[secFactName]])
+  }
+} else if (inputType == "counts") {
   # Process counts information, set ID column to be row names
   rownames(counts) <- counts$ID
-  counts <- counts[ , !(colnames(counts)=="ID")]
+  counts <- counts[ , !(colnames(counts) == "ID")]
   countsRows <- nrow(counts)
   
   # Process group information
-  factors <- samples$group[match(samples$ID, colnames(counts))]
+  sampleNames <- colnames(counts)
+  matchedIndex <- match(sampleNames, samples$ID)
+  factors <- samples$group[matchedIndex]
+
+  if (secFactName != "none") {
+    secFactors <- samples[[secFactName]][matchedIndex]
+  }
+  
   annoRows <- nrow(anno)
   anno <- anno[match(rownames(counts), anno$ID), ]
   annoMatched <- sum(!is.na(anno$ID))
@@ -416,14 +486,48 @@ if (any(data$samples$lib.size == 0)) {
 
 # Filter hairpins with low counts
 preFilterCount <- nrow(data)
-sel <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
-data <- data[sel, ]
-postFilterCount <- nrow(data)
-filteredCount <- preFilterCount-postFilterCount
+selRow <- rowSums(cpm(data$counts) > cpmReq) >= sampleReq
+selCol <- colSums(data$counts) > readReq
+data <- data[selRow, selCol]
 
-# Estimate dispersions
-data <- estimateDisp(data)
-commonBCV <- sqrt(data$common.dispersion)
+# Check if any data survived filtering
+if (length(data$counts) == 0) {
+  stop("no data remains after filtering, consider relaxing filters")
+}
+
+# Count number of filtered tags and samples
+postFilterCount <- nrow(data)
+filteredCount <- preFilterCount - postFilterCount
+sampleFilterCount <- sum(!selCol)
+
+if (secFactName == "none") {
+  # Estimate dispersions
+  data <- estimateDisp(data)
+  commonBCV <- round(sqrt(data$common.dispersion), 4)
+} else {
+  # Construct design
+  if (inputType == "counts") {
+      
+    sampleNames <- colnames(counts)
+    matchedIndex <- match(sampleNames, samples$ID)
+    factors <- factor(make.names(samples$group[matchedIndex]))
+
+    secFactors <- factor(make.names(samples[[secFactName]][matchedIndex]))
+
+  } else if (inputType == "fastq" || inputType == "pairedFastq") {
+
+    factors <- factor(data$sample$group)
+    secFactors <- factor(data$sample[[secFactName]])
+  
+  }
+
+  design <- model.matrix(~0 + factors + secFactors)
+  
+  # Estimate dispersions
+  data <- estimateDisp(data, design=design)
+  commonBCV <- round(sqrt(data$common.dispersion), 4)
+}
+
 
 ################################################################################
 ### Output Processing
@@ -494,14 +598,23 @@ newEntry <- c("BCV Plot (.pdf)", "bcv.pdf")
 linkData <- rbind(linkData, newEntry)
 invisible(dev.off())
 
-if (workMode=="classic") {
+if (workMode == "classic") {
   # Assess differential representation using classic exact testing methodology 
   # in edgeR
   testData <- exactTest(data, pair=pairData)
   
   top <- topTags(testData, n=Inf)
-  topIDs <- top$table[(top$table$FDR < fdrThresh) &
+
+  if (selectDirection == "all") {
+    topIDs <- top$table[(top$table$FDR < fdrThresh) &
                       (abs(top$table$logFC) > lfcThresh), 1]
+  } else if (selectDirection == "up") {
+    topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                      (top$table$logFC > lfcThresh), 1]
+  } else if (selectDirection == "down") {
+  topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                      (top$table$logFC < -lfcThresh), 1]
+}
                       
   write.table(top, file=topOut, row.names=FALSE, sep="\t")
   
@@ -511,8 +624,10 @@ if (workMode=="classic") {
   linkData <- rbind(linkData, c(linkName, linkAddr))
   
   upCount[1] <- sum(top$table$FDR < fdrThresh & top$table$logFC > lfcThresh)
+
   downCount[1] <- sum(top$table$FDR < fdrThresh & 
                       top$table$logFC < -lfcThresh)
+
   flatCount[1] <- sum(top$table$FDR > fdrThresh |
                       abs(top$table$logFC) < lfcThresh)
   
@@ -543,12 +658,40 @@ if (workMode=="classic") {
   linkData <- rbind(linkData, c(imgName, imgAddr))
   invisible(dev.off())
   
-} else if (workMode=="glm") {
+} else if (workMode == "glm") {
   # Generating design information
-  factors <- factor(data$sample$group)
-  design <- model.matrix(~0+factors)
+  if (secFactName == "none") {
+
+    factors <- factor(data$sample$group)
+    design <- model.matrix(~0 + factors)
+    
+    colnames(design) <- gsub("factors", "", colnames(design), fixed=TRUE)
+
+  } else {
+
+    factors <- factor(data$sample$group)
+
+    if (inputType == "counts") {
+      
+      sampleNames <- colnames(counts)
+      matchedIndex <- match(sampleNames, samples$ID)
+      factors <- factor(samples$group[matchedIndex])
+
+      secFactors <- factor(samples[[secFactName]][matchedIndex])
+
+    } else if (inputType == "fastq" || inputType == "pairedFastq") {
+
+      secFactors <- factor(data$sample[[secFactName]])
+    
+    }
+
+    design <- model.matrix(~0 + factors + secFactors)
+    
+    colnames(design) <- gsub("factors", "", colnames(design), fixed=TRUE)
+    colnames(design) <- gsub("secFactors", secFactName, colnames(design), 
+                              fixed=TRUE)
+  }
   
-  colnames(design) <- gsub("factors", "", colnames(design), fixed=TRUE)
   
   # Split up contrasts seperated by comma into a vector
   contrastData <- unlist(strsplit(contrastData, split=","))
@@ -564,8 +707,18 @@ if (workMode=="classic") {
     
     # Select hairpins with FDR < 0.05 to highlight on plot
     top <- topTags(testData, n=Inf)
-    topIDs <- top$table[(top$table$FDR < fdrThresh) &
+
+    if (selectDirection == "all") {
+      topIDs <- top$table[(top$table$FDR < fdrThresh) &
                         (abs(top$table$logFC) > lfcThresh), 1]
+    } else if (selectDirection == "up") {
+      topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                        (top$table$logFC > lfcThresh), 1]
+    } else if (selectDirection == "down") {
+      topIDs <- top$table[(top$table$FDR < fdrThresh) &
+                        (top$table$logFC < -lfcThresh), 1]
+    }
+
     write.table(top, file=topOut[i], row.names=FALSE, sep="\t")
     
     linkName <- paste0("Top Tags Table(", contrastData[i], ") (.tsv)")
@@ -607,8 +760,8 @@ if (workMode=="classic") {
     unq <- unq[!is.na(unq)]
     geneList <- list()
     for (gene in unq) {
-      if (length(which(genes==gene)) >= hairpinReq) {
-        geneList[[gene]] <- which(genes==gene)
+      if (length(which(genes == gene)) >= hairpinReq) {
+        geneList[[gene]] <- which(genes == gene)
       }
     }
     
@@ -624,7 +777,7 @@ if (workMode=="classic") {
                          ") (.tsv)")
       linkAddr <- paste0("gene_level(", contrastData[i], ").tsv")
       linkData <- rbind(linkData, c(linkName, linkAddr))
-      if (selectOpt=="rank") {
+      if (selectOpt == "rank") {
         selectedGenes <- rownames(roastData)[selectVals]
       } else {
         selectedGenes <- selectVals
@@ -668,9 +821,13 @@ if (workMode=="classic") {
 # Generate data frame of the significant differences
 sigDiff <- data.frame(Up=upCount, Flat=flatCount, Down=downCount)
 if (workMode == "glm") {
+
   row.names(sigDiff) <- contrastData
+
 } else if (workMode == "classic") {
+
   row.names(sigDiff) <- paste0(pairData[2], "-", pairData[1])
+
 }
 
 # Output table of summarised counts
@@ -702,7 +859,8 @@ HtmlHead("EdgeR Output")
 cata("<body>\n")
 cata("<h3>EdgeR Analysis Output:</h3>\n")
 cata("<h4>Input Summary:</h4>\n")
-if (inputType=="fastq") {
+if (inputType == "fastq" || inputType == "pairedFastq") {
+
   cata("<ul>\n")
   ListItem(hpReadout[1])
   ListItem(hpReadout[2])
@@ -716,31 +874,51 @@ if (inputType=="fastq") {
   cata("<br />\n")
   cata("<b>Please check that read percentages are consistent with ")
   cata("expectations.</b><br >\n")
-} else if (inputType=="counts") {
+
+} else if (inputType == "counts") {
+
   cata("<ul>\n")
   ListItem("Number of Samples: ", ncol(data$counts))
   ListItem("Number of Hairpins: ", countsRows)
   ListItem("Number of annotations provided: ", annoRows)
   ListItem("Number of annotations matched to hairpin: ", annoMatched)
   cata("</ul>\n")
+
 }
 
 cata("The estimated common biological coefficient of variation (BCV) is: ", 
      commonBCV, "<br />\n")
 
+if (secFactName == "none") {
+
+  cata("No secondary factor specified.<br />\n")
+
+} else {
+
+  cata("Secondary factor specified as: ", secFactName, "<br />\n")
+
+}
+
 cata("<h4>Output:</h4>\n")
 cata("PDF copies of JPEGS available in 'Plots' section.<br />\n")
 for (i in 1:nrow(imageData)) {
   if (grepl("barcode", imageData$Link[i])) {
+
     if (packageVersion("limma")<"3.19.19") {
+
       HtmlImage(imageData$Link[i], imageData$Label[i], 
                 height=length(selectedGenes)*150)
+
     } else {
+
       HtmlImage(imageData$Link[i], imageData$Label[i], 
                 height=length(selectedGenes)*300)
+
     }
   } else {
+
     HtmlImage(imageData$Link[i], imageData$Label[i])
+
   }
 }
 cata("<br />\n")
@@ -779,26 +957,42 @@ for (i in 1:nrow(linkData)) {
 }
 
 cata("<p>Alt-click links to download file.</p>\n")
-cata("<p>Click floppy disc icon associated history item to download ")
+cata("<p>Click floppy disc icon on associated history item to download ")
 cata("all files.</p>\n")
 cata("<p>.tsv files can be viewed in Excel or any spreadsheet program.</p>\n")
 
 cata("<h4>Additional Information:</h4>\n")
 
 if (inputType == "fastq") {
+
   ListItem("Data was gathered from fastq raw read file(s).")
+
 } else if (inputType == "counts") {
+
   ListItem("Data was gathered from a table of counts.")
+
 }
 
-if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Hairpins without more than", cpmReq,
+if (cpmReq != 0 && sampleReq != 0) {
+  tempStr <- paste("Target sequences without more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are insignificant",
                    "and filtered out.")
   ListItem(tempStr)
+
   filterProp <- round(filteredCount/preFilterCount*100, digits=2)
   tempStr <- paste0(filteredCount, " of ", preFilterCount," (", filterProp,
-                   "%) hairpins were filtered out for low count-per-million.")
+                   "%) target sequences were filtered out for low ",
+                   "count-per-million.")
+  ListItem(tempStr)
+}
+
+if (sampleReq != 0) {
+  tempStr <- paste("Samples that did not produce more than", sampleReq,
+                   "counts were filtered out.")
+  ListItem(tempStr)
+
+  tempStr <- paste0(sampleFilterCount, " samples were filtered out for low ",
+                    "counts.")
   ListItem(tempStr)
 }
 
@@ -809,9 +1003,9 @@ if (exists("filteredSamples")) {
 }
 
 if (workMode == "classic") {
-  ListItem("An exact test was performed on each hairpin.")
+  ListItem("An exact test was performed on each target sequence.")
 } else if (workMode == "glm") {
-  ListItem("A generalised linear model was fitted to each hairpin.")
+  ListItem("A generalised linear model was fitted to each target sequence.")
 }
 
 cit <- character()
