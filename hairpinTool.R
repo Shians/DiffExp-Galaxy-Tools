@@ -491,6 +491,7 @@ invisible(dev.off())
 pdf(bcvPdf)
 plotBCV(data, main="BCV Plot")
 newEntry <- c("BCV Plot (.pdf)", "bcv.pdf")
+linkData <- rbind(linkData, newEntry)
 invisible(dev.off())
 
 if (workMode=="classic") {
