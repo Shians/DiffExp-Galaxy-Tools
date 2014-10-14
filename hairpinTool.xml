@@ -1,4 +1,4 @@
-<tool id="amplicon_tool" name="Amplicon Tool" version="1.0.5">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.2.0">
   <description>
     Analyse differential representation for shRNAseq and sgRNA based procedures
     using edgeR package from Bioconductor.
