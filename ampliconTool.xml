@@ -1,6 +1,7 @@
-<tool id="amplicon_tool" name="Amplicon Tool" version="1.0.1">
+<tool id="amplicon_tool" name="Amplicon Tool" version="1.0.5">
   <description>
-    Analyse differential representation for amplicon based procedures using edgeR
+    Analyse differential representation for shRNAseq and sgRNA based procedures
+    using edgeR package from Bioconductor.
   </description>
     
   <requirements>
@@ -16,13 +17,14 @@
   <command interpreter="Rscript">
   ampliconTool.R $inputOpt.inputType
                 #if $inputOpt.inputType=="fastq":
+
                   #for $i, $fas in enumerate($inputOpt.fastq):
                     fastq::$fas.file
                   #end for
     
                   $inputOpt.hairpin
                   $inputOpt.samples
-                    
+
                   #if $inputOpt.positions.posOption=="yes":
                     $inputOpt.positions.barstart
                     $inputOpt.positions.barend
@@ -39,6 +41,7 @@
                     57
                   #end if
                 #elif $inputOpt.inputType=="pairedFastq":
+
                   #for $i, $fas in enumerate($inputOpt.fastq):
                     fastq::$fas.file
                   #end for
@@ -65,6 +68,7 @@
                     37
                     57
                   #end if
+
                 #elif $inputOpt.inputType=="counts":
                   $inputOpt.counts
                   $inputOpt.hairpin
@@ -75,17 +79,26 @@
                   0
                   0
                 #end if
-          
+                
+                #if $inputOpt.secondaryFactor.secFactorOpt=="yes":
+                  $inputOpt.secondaryFactor.secFactName
+                #else:
+                  "none"
+                #end if
+
                 #if $filterCPM.filtOption=="yes":
                   $filterCPM.cpmReq
                   $filterCPM.sampleReq
+                  $filterCPM.readReq
                 #else:
+                  -Inf
                   -Inf
                   -Inf
                 #end if
           
                 $fdr
                 $lfc
+                $direction
                 $workMode.mode
                 $outFile
                 $outFile.files_path
@@ -96,6 +109,7 @@
                 #elif $workMode.mode=="glm":
                   "$workMode.contrast"
                   $workMode.roast.roastOption
+
                   #if $workMode.roast.roastOption=="yes":
                     $workMode.roast.hairpinReq
                     $workMode.roast.select.selOption
@@ -105,11 +119,13 @@
                     0
                     0
                   #end if
+
                 #end if
   </command>
   
   <inputs>
     <conditional name="inputOpt">
+
       <param name="inputType" type="select" label="Input File Type">
         <option value="fastq">FastQ File</option>
         <option value="pairedFastq">Paired FastQ File</option>
@@ -118,7 +134,7 @@
 
       <when value="fastq">
         <param name="hairpin" type="data" format="tabular" 
-               label="Hairpin Annotation"/>
+               label="Target Annotation"/>
         
         <param name="samples" type="data" format="tabular" 
                label="Sample Annotation"/>
@@ -126,26 +142,48 @@
         <repeat name="fastq" title="FastQ Files">       
           <param name="file" type="data" format="fastq"/>
         </repeat>
+        
+        <conditional name="secondaryFactor">
           
+          <param name="secFactorOpt" type="select"
+                 label="Include Secondary Factor">
+
+            <option value="no" selected="True">No</option>
+
+            <option value="yes">Yes</option>
+
+          </param>
+
+          <when value="yes">
+
+            <param name="secFactName" type="text" label="Secondary Factor Name"
+                   size="80"/>
+
+          </when>
+
+          <when value="no">
+          </when>
+        </conditional>
+        
         <conditional name="positions">
           <param name="posOption" type="select" 
-                 label="Specify Barcode and Hairpin Locations?"
-                 help="Default Positions: Barcode: 1 to 5, Hairpin: 37 to 57.">
+                 label="Specify Sample Index and Target Sequence Locations?"
+                 help="Default Positions: Index: 1 to 5, Target: 37 to 57.">
             <option value="no" selected="True">No</option>
             <option value="yes">Yes</option>
           </param>
           
           <when value="yes">
             <param name="barstart" type="integer" value="1"
-                   label="Barcode Starting Position"/>
+                   label="Index Starting Position"/>
             <param name="barend" type="integer" value="5"
-                   label="Barcode Ending Position"/>
+                   label="Index Ending Position"/>
             
             <param name="hpstart" type="integer" value="37"
-                   label="Hairpin Starting Position"/>
+                   label="Target Starting Position"/>
                
             <param name="hpend" type="integer" value="57"
-                   label="Hairpin Ending Position"/>
+                   label="Target Ending Position"/>
           </when>
           
           <when value="no"/>
@@ -154,7 +192,7 @@
 
       <when value="pairedFastq">
         <param name="hairpin" type="data" format="tabular" 
-               label="Hairpin Annotation"/>
+               label="Target Sequence Annotation"/>
         
         <param name="samples" type="data" format="tabular" 
                label="Sample Annotation"/>
@@ -164,52 +202,109 @@
           <param name="fileRev" type="data" format="fastq"/>
         </repeat>
           
-        <conditional name="positions">
-          <param name="posOption" type="select" 
-                 label="Specify Barcode and Hairpin Locations?"
-                 help="Default Positions: Barcode: 1 to 5, Input required for reverse end, Hairpin: 37 to 57.">
+        <conditional name="secondaryFactor">
+
+          <param name="secFactorOpt" type="select"
+                 label="Include Secondary Factor">
+
             <option value="no" selected="True">No</option>
+
             <option value="yes">Yes</option>
+
+          </param>
+
+          <when value="yes">
+
+            <param name="secFactName" type="text" label="Secondary Factor Name"
+                   size="80"/>
+
+          </when>
+
+          <when value="no">
+          </when>
+        </conditional>
+
+        <conditional name="positions">
+
+          <param name="posOption" type="select" 
+                 label="Specify Sample Index and Target Sequence Locations?"
+                 help="Default Positions: Index: 1 to 5, Input required for 
+                       reverse end, Target: 37 to 57.">
+
+            <option value="no" selected="True">No</option>
+
+            <option value="yes">Yes</option>
+
           </param>
           
           <when value="yes">
             <param name="barstart" type="integer" value="1"
-                   label="Barcode Starting Position"/>
+                   label="Index Starting Position"/>
 
             <param name="barend" type="integer" value="5"
-                   label="Barcode Ending Position"/>
+                   label="Index Ending Position"/>
 
             <param name="barstartRev" type="integer" value="0"
-                   label="Barcode Starting Position"/>
+                   label="Reverse Index Starting Position"/>
                    
             <param name="barendRev" type="integer" value="0"
-                   label="Barcode Ending Position"/>
+                   label="Reverse Index Ending Position"/>
            
             <param name="hpstart" type="integer" value="37"
-                   label="Hairpin Starting Position"/>
+                   label="Target Starting Position"/>
                
             <param name="hpend" type="integer" value="57"
-                   label="Hairpin Ending Position"/>
+                   label="Target Ending Position"/>
           </when>
 
-          <when value="no"/>
+          <when value="no">
+          </when>
+
         </conditional>
+
       </when>
 
-      
       <when value="counts">
+
         <param name="counts" type="data" format="tabular" label="Counts Table"/>
+
         <param name="hairpin" type="data" format="tabular" 
-               label="Hairpin Annotation"/>
+               label="Target Sequence Annotation"/>
+
         <param name="samples" type="data" format="tabular"
                label="Sample Annotation"/> 
+
+        <conditional name="secondaryFactor">
+
+          <param name="secFactorOpt" type="select"
+                 label="Include Secondary Factor">
+
+            <option value="no" selected="True">No</option>
+
+            <option value="yes">Yes</option>
+
+          </param>
+
+          <when value="yes">
+
+            <param name="secFactName" type="text" label="Secondary Factor Name"
+                   size="80"/>
+
+          </when>
+
+          <when value="no">
+          </when>
+
+        </conditional>
+
       </when>
+
     </conditional>
     
     <conditional name="filterCPM">
       <param name="filtOption" type="select" label="Filter Low CPM?"
-       help="Ignore hairpins with very low representation when performing 
-             analysis.">
+       help="Ignore target sequences with very low representation when 
+             performing analysis.">
         <option value="yes">Yes</option>
         <option value="no">No</option>
       </param>
@@ -222,6 +317,12 @@
                  label="Minimum Samples" 
                  help="Filter out all the genes that do not meet the minimum 
                        CPM in at least this many samples."/>
+
+          <param name="readReq" type="integer" value="1000" min="0"
+                 label="Minimum Reads" 
+                 help="Filter out all samples that do not have the minimum 
+                       number of reads."/>
+
         </when>
         
         <when value="no"/>
@@ -255,17 +356,18 @@
         <conditional name="roast">
           <param name="roastOption" type="select" 
                  label="Perform Gene Level Analysis?"
-                 help="Analyse LogFC tendencies for hairpins belonging
-                       to the same gene.">
+                 help="Analyse LogFC tendencies for target sequences belonging
+                       to the same gene. NOTE: this is a slow procedure that
+                       scales badly with the number of genes analysed.">
             <option value="no">No</option>
             <option value="yes">Yes</option>
           </param>
           
           <when value="yes">
             <param name="hairpinReq" type="integer" value="2" min="2"
-                   label="Minimum Hairpins"
-                   help="Only genes with at least this many hairpins will
-                         be analysed."/>
+                   label="Minimum Targets Found"
+                   help="Only genes with at least this many target sequences
+                         found will be analysed."/>
                          
             <conditional name="select">
               <param name="selOption" type="select"
@@ -303,25 +405,33 @@
            label="FDR Threshold"
            help="All observations below this threshold will be highlighted
                  in the smear plot."/>
+
     <param name="lfc" type="float" value="0" min="0" 
            label="Absolute LogFC Threshold"
            help="In additional to meeting the FDR requirement, the absolute 
                  value of the log-fold-change of the observation must be above
                  this threshold to be highlighted."/>
+
+    <param name="direction" type="select" label="Highlight Option"
+        help="Only hightlight positive or negative fold changes in smear plot?">
+        <option value="all">Default</option>
+        <option value="up">Positive Only</option>
+        <option value="down">Negative Only</option>
+    </param>
   </inputs>
 
   <outputs>
-    <data format="html" name="outFile" label="Amplicon Tool Analysis"/>
+    <data format="html" name="outFile" label="TagSeq Analysis"/>
   </outputs>
   <help>
 .. class:: infomark
 
 **What it does**
 
-Given tables containing information about the hairpins and their associated
-barcodes, information about the samples and fastq file containing the hairpin
-reads. This tool will generate plots and tables for the analysis of differential
-representation.
+Given tables containing information about the hairpins/sgRNA and their 
+associated sample indices, information about the samples and fastq file 
+containing the sequencing reads. This tool will generate plots and tables for 
+the analysis of differential representation.
 
 .. class:: infomark
 
@@ -337,14 +447,15 @@ http://bioinf.wehi.edu.au/shRNAseq/galaxy.html
 **Input File Type:**
 
 This tool is able to either generate counts from a raw FastQ file given the
-information regarding the samples and hairpins. Alternatively if a table of
-counts has already been generated it can also be used.
+information regarding the samples and hairpins/sgRNA. Alternatively if a table 
+of counts has already been generated it can also be used.
 
 **Counts Table (Counts Input):**
 
-A tab delimited text table of information regarding the counts of hairpins.
-Should have a column 'ID' to denote the hairpins that counts correspond to. Each
-additional column should have titles corresponding to the label for the sample.
+A tab delimited text table of information regarding the counts of 
+hairpins/sgRNA. Should have a column 'ID' to denote the hairpins/sgRNA that 
+counts correspond to. Each additional column should have titles corresponding to 
+the label for the sample.
 
 Example::
 
@@ -361,11 +472,12 @@ Example::
   Hairpin7 49501 49076 47611
   ...
   
-**Hairpin Annotation:**
+**Target Sequence Annotation:**
 
-A tab delimited text table of information regarding the hairpins. Should have
-columns 'ID', 'Sequences' and 'Gene' to uniquely identify the hairpin, align it
-with the reads to produce counts and identify which gene the hairpin acts on.
+A tab delimited text table of information regarding the targetted 
+hairpins/sgRNA sequence. Should have columns 'ID', 'Sequences' and 'Gene' to 
+uniquely identify the target, align it with the reads to produce counts and 
+identify which gene the target acts on.
 
 NOTE: the column names are case sensitive and should be input exactly as they
 are shown here.
@@ -389,34 +501,49 @@ Example::
 
 A tab delimited text table of information regarding the samples. Should have
 columns 'ID', 'Sequences' and 'group' to uniquely identify each sample, identify
-the sample in the reads by its barcode sequence and correctly group replicates
-for analysis. Additional columns may inserted for annotation purposes and will
-not interfere with analysis as long as the necessary columns are present.
+the sample in the reads by its sample index sequence and correctly group 
+replicates for analysis. Additional columns may inserted for annotation purposes 
+and will not interfere with analysis as long as the necessary columns are 
+present.
 
-NOTE: the column names are case sensitive and should be input exactly as they
-are shown here.
+NOTE: With the exception of other_group, column names are case sensitive and
+should be input exactly as they are shown here. The other_group column can be
+named by the user and specified in the "Include Secondary Factor" option of the
+tool.
 
 Example::
 
-  ID  Sequences group Replicate
-  3 GAAAG Day 2 1
-  6 GAACC Day 10  1
-  9 GAAGA Day 5 GFP neg 1
-  16  GAATT Day 5 GFP pos 1
-  18  GACAC Day 2 2
-  21  GACCA Day 10  2
-  28  GACGT Day 5 GFP neg 2
-  31  GACTG Day 5 GFP pos 2
-  33  GAGAA Day 2 3
-  40  GAGCT Day 10  3
+  ID  Sequences group other_group Replicate
+  3 GAAAG Day 2 male 1
+  6 GAACC Day 10  female  1
+  9 GAAGA Day 5 GFP neg male 1
+  16  GAATT Day 5 GFP pos male 1
+  18  GACAC Day 2 female 2
+  21  GACCA Day 10  male  2
+  28  GACGT Day 5 GFP neg male 2
+  31  GACTG Day 5 GFP pos female 2
+  33  GAGAA Day 2 male 3
+  40  GAGCT Day 10  female  3
   ...
   
-**Specify Barcode and Hairpin Locations (FastQ Input):**
+**Include Secondary Factor**
+If there are two factors involved in the experiment (i.e. Age and Gender) then
+then secondary factor should be included to improve the statistical analysis.
+The secondary factor should be specified as a column in the sample annotation
+file and the corresponding column name should be input exactly as it is into 
+the provided field in the tool.
+
+NOTE: Currently the secondary factor is used only to improve statistical
+analysis, comparisons can only be made in the primary factor specified as 
+"group" in the sample annotation.
+
+**Specify Sample Index and Target Sequence Locations (FastQ Input):**
 
 It is assumed that in the sequencing reads that the first 5 bases are the
-barcodes and that bases 37-57 are the hairpins. If this is not the case then the
-values of the positions can be changed, however it still requires the barcodes
-and hairpins to be in a consistent location an in a continuous sequence.
+sample index sequence and that bases 37-57 are the hairpins/sgRNA. If this is 
+not the case then the values of the positions can be changed, however it still
+requires the sample indices and hairpins/sgRNA to be in a consistent location an
+in a continuous sequence.
 
 NOTE: position values start at 1 for the first base.
 
@@ -428,21 +555,21 @@ Filtering will be based on counts per million in a required number of samples.
 
 **Analysis Type:**
 
- * **Classic Exact Test:** This allows two experimental groups to be compared and
-   p-values for differential representation derivec for each hairpin. Simple and
-   fast for straightforward comparisons. In this option you will have the option of
-   "*Compare* x *To* y" which implicitly subtracts the data from y from that of x
-   to produce the comparison.
+ * **Classic Exact Test:** This allows two experimental groups to be compared 
+   and p-values for differential representation derivec for each target 
+   sequence. Simple and fast for straightforward comparisons. In this option you
+   will have the option of "*Compare* x *To* y" which implicitly subtracts the 
+   data from y from that of x to produce the comparison.
 
- * **Generalised Linear Model:** This allow for complex contrasts to be specified
-   and also gene level analysis to be performed. If this option is chosen then
-   contrasts must be explicitly stated in equations and multiple contrasts can be
-   made. In addition there will be the option to analyse hairpins on a per-gene
-   basis to see if hairpins belonging to a particular gene have any overall
-   tendencies for the direction of their log-fold-change.
+ * **Generalised Linear Model:** This allow for complex contrasts to be specified 
+   and also gene level analysis to be performed. If this option is chosen then 
+   contrasts must be explicitly stated in equations and multiple contrasts can 
+   be made. In addition there will be the option to analyse hairpins/sgRNA on a 
+   per-gene basis to see if hairpins/sgRNA belonging to a particular gene have 
+   any overall tendencies for the direction of their log-fold-change.
 
 **FDR Threshold:**
-The smear plot in the output will have hairpins highlighted to signify
+The smear plot in the output will have hairpins/sgRNA highlighted to signify
 significant differential representation. The significance is determined by
 contorlling the false discovery rate, only those with a FDR lower than the
 threshold will be highlighted in the plot.
