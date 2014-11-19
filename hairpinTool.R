@@ -48,6 +48,7 @@
 # OUT:  Bar Plot of Counts Per Index
 #       Bar Plot of Counts Per Hairpin
 #       MDS Plot
+#       BCV Plot
 #       Smear Plot
 #       Barcode Plots (If Genewise testing was selected)
 #       Top Expression Table
@@ -416,6 +417,7 @@ if (workMode == "glm") {
                                                   
 if (inputType == "fastq" || inputType == "pairedFastq") {
   # Use EdgeR hairpin process and capture outputs
+
   hpReadout <- capture.output(
   data <- processAmplicons(readfile=fastqPath, readfile2=fastqPathRev,
                             barcodefile=samplePath, 

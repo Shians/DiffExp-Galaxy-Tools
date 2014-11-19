@@ -1,4 +1,4 @@
-<tool id="shRNAseq" name="shRNAseq Tool" version="1.2.0">
+<tool id="shRNAseq" name="shRNAseq Tool" version="1.2.1">
   <description>
     Analyse differential representation for shRNAseq and sgRNA based procedures
     using edgeR package from Bioconductor.
@@ -15,7 +15,7 @@
   </stdio>
   
   <command interpreter="Rscript">
-  ampliconTool.R $inputOpt.inputType
+  hairpinTool.R $inputOpt.inputType
                 #if $inputOpt.inputType=="fastq":
 
                   #for $i, $fas in enumerate($inputOpt.fastq):
@@ -81,38 +81,38 @@
                 #end if
                 
                 #if $inputOpt.secondaryFactor.secFactorOpt=="yes":
-                  $inputOpt.secondaryFactor.secFactName
+                  "$inputOpt.secondaryFactor.secFactName"
                 #else:
                   "none"
                 #end if
 
                 #if $filterCPM.filtOption=="yes":
-                  $filterCPM.cpmReq
-                  $filterCPM.sampleReq
-                  $filterCPM.readReq
+                  "$filterCPM.cpmReq"
+                  "$filterCPM.sampleReq"
+                  "$filterCPM.readReq"
                 #else:
                   -Inf
                   -Inf
                   -Inf
                 #end if
           
-                $fdr
-                $lfc
-                $direction
-                $workMode.mode
-                $outFile
-                $outFile.files_path
+                "$fdr"
+                "$lfc"
+                "$direction"
+                "$workMode.mode"
+                "$outFile"
+                "$outFile.files_path"
           
                 #if $workMode.mode=="classic":
                   "$workMode.pair1"
                   "$workMode.pair2"
                 #elif $workMode.mode=="glm":
                   "$workMode.contrast"
-                  $workMode.roast.roastOption
+                  "$workMode.roast.roastOption"
 
                   #if $workMode.roast.roastOption=="yes":
-                    $workMode.roast.hairpinReq
-                    $workMode.roast.select.selOption
+                    "$workMode.roast.hairpinReq"
+                    "$workMode.roast.select.selOption"
                     "$workMode.roast.select.selection"
                   #else:
                     0
