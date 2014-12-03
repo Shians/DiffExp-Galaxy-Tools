@@ -87,9 +87,9 @@
                 #end if
 
                 #if $filterCPM.filtOption=="yes":
-                  "$filterCPM.cpmReq"
-                  "$filterCPM.sampleReq"
-                  "$filterCPM.readReq"
+                  $filterCPM.cpmReq
+                  $filterCPM.sampleReq
+                  $filterCPM.readReq
                 #else:
                   -Inf
                   -Inf

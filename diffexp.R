@@ -34,6 +34,7 @@ library(statmod, quietly=TRUE, warn.conflicts=FALSE)
 library(splines, quietly=TRUE, warn.conflicts=FALSE)
 library(edgeR, quietly=TRUE, warn.conflicts=FALSE)
 library(limma, quietly=TRUE, warn.conflicts=FALSE)
+library(scales, quietly=TRUE, warn.conflicts=FALSE)
 
 if (packageVersion("limma") < "3.20.1") {
   stop("Please update 'limma' to version >= 3.20.1 to run this tool")
@@ -73,7 +74,7 @@ makeOut <- function(filename) {
 
 # Generating design information
 pasteListName <- function(string) {
-  return(paste0("factors$",string))
+  return(paste0("factors$", string))
 }
 
 # Create cata function: default path set, default seperator empty and appending
@@ -192,6 +193,8 @@ contrastData <- gsub(" ", ".", contrastData, fixed=TRUE)
 
 bcvOutPdf <- makeOut("bcvplot.pdf")
 bcvOutPng <- makeOut("bcvplot.png")
+mdsOutPdf <- makeOut("mdsplot.pdf")
+mdsOutPng <- makeOut("mdsplot.png")
 voomOutPdf <- makeOut("voomplot.pdf")
 voomOutPng <- makeOut("voomplot.png") 
 maOutPdf <- character()   # Initialise character vector
@@ -294,49 +297,63 @@ row.names(factors) <- names(data$counts)
 #plotBCV(data, main="BCV Plot")
 #invisible(dev.off())
 
+if (wantWeight) {
+  # Creating voom data object and plot
+  png(voomOutPng, width=1000, height=600)
+  vData <- voomWithQualityWeights(data, design=design, plot=TRUE)
+  imageData[1, ] <- c("Voom Plot", "voomplot.png")
+  invisible(dev.off())
+  
+  pdf(voomOutPdf)
+  vData <- voomWithQualityWeights(data, design=design, plot=TRUE)
+  linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
+  invisible(dev.off())
+  
+  # Generating fit data and top table with weights
+  wts <- vData$weights
+  voomFit <- lmFit(vData, design, weights=wts)
+  
+} else {
+  # Creating voom data object and plot
+  png(voomOutPng, width=600, height=600)
+  vData <- voom(data, design=design, plot=TRUE)
+  imageData[1, ] <- c("Voom Plot", "voomplot.png")
+  invisible(dev.off())
+  
+  pdf(voomOutPdf)
+  vData <- voom(data, design=design, plot=TRUE)
+  linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
+  invisible(dev.off())
+  
+  # Generate voom fit
+  voomFit <- lmFit(vData, design)
+  
+}
+
+# Fit linear model and estimate dispersion with eBayes
+voomFit <- contrasts.fit(voomFit, contrasts)
+voomFit <- eBayes(voomFit)
+
+# Plot MDS
+labels <- names(counts)
+png(mdsOutPng, width=600, height=600)
+# Currently only using a single factor
+plotMDS(vData, labels=labels, col=as.numeric(factors[, 1]), cex=0.8)
+imgName <- "Voom Plot"
+imgAddr <- "mdsplot.png"
+imageData <- rbind(imageData, c(imgName, imgAddr))
+invisible(dev.off())
+
+pdf(mdsOutPdf)
+plotMDS(vData, labels=labels, cex=0.5)
+linkName <- paste0("MDS Plot (.pdf)")
+linkAddr <- paste0("mdsplot.pdf")
+linkData <- rbind(linkData, c(linkName, linkAddr))
+invisible(dev.off())
+
 
 for (i in 1:length(contrastData)) {
-  if (wantWeight) {
-    # Generating weights
-    vData <- voom(data, design = design)
-    aw <- arrayWeights(vData, design)
-    
-    # Creating voom data object and plot
-    png(voomOutPng, width=600, height=600)
-    vData <- voom(data, design=design, weights=aw, plot=TRUE)
-    imageData[1, ] <- c("Voom Plot", "voomplot.png")
-    invisible(dev.off())
-    
-    pdf(voomOutPdf)
-    vData <- voom(data, design=design, weights=aw, plot=TRUE)
-    linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
-    invisible(dev.off())
-    
-    # Generating fit data and top table with weights
-    wts <- asMatrixWeights(aw, dim(vData)) * vData$w
-    voomFit <- lmFit(vData, design, weights=wts)
-    
-  } else {
-    # Creating voom data object and plot
-    png(voomOutPng, width=600, height=600)
-    vData <- voom(data, design=design, plot=TRUE)
-    imageData[1, ] <- c("Voom Plot", "voomplot.png")
-    invisible(dev.off())
-    
-    pdf(voomOutPdf)
-    vData <- voom(data, design=design, plot=TRUE)
-    linkData[1, ] <- c("Voom Plot (.pdf)", "voomplot.pdf")
-    invisible(dev.off())
-    
-    # Generate voom fit
-    voomFit <- lmFit(vData, design)
-    
-  }
-  
-  # Fit linear model and estimate dispersion with eBayes
-  voomFit <- contrasts.fit(voomFit, contrasts)
-  voomFit <- eBayes(voomFit)
-  
+
   status = decideTests(voomFit[, i], adjust.method=pAdjOpt, p.value=pValReq,
                        lfc=lfcReq)
                        
@@ -360,7 +377,7 @@ for (i in 1:length(contrastData)) {
   pdf(maOutPdf[i])
   limma::plotMA(voomFit, status=status, coef=i,
                 main=paste("MA Plot:", unmake.names(contrastData[i])), 
-                col=c("black", "green", "firebrick"), values=c("0", "1", "-1"),
+                col=alpha(c("firebrick", "blue"), 0.4), values=c("1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -373,7 +390,7 @@ for (i in 1:length(contrastData)) {
   png(maOutPng[i], height=600, width=600)
   limma::plotMA(voomFit, status=status, coef=i,
                 main=paste("MA Plot:", unmake.names(contrastData[i])), 
-                col=c("black", "green", "firebrick"), values=c("0", "1", "-1"),
+                col=alpha(c("firebrick", "blue"), 0.4), values=c("1", "-1"),
                 xlab="Average Expression", ylab="logFC")
   
   abline(h=0, col="grey", lty=2)
@@ -420,7 +437,13 @@ HtmlHead("Limma Output")
 cata("<body>\n")
 cata("<h3>Limma Analysis Output:</h3>\n")
 cata("PDF copies of JPEGS available in 'Plots' section.<br />\n")
-for (i in 1:nrow(imageData)) {
+if (wantWeight) {
+  HtmlImage(imageData$Link[1], imageData$Label[1], width=1000)
+} else {
+  HtmlImage(imageData$Link[1], imageData$Label[1])
+}
+
+for (i in 2:nrow(imageData)) {
   HtmlImage(imageData$Link[i], imageData$Label[i])
 }
 
@@ -474,7 +497,7 @@ cata("<p>.tsv files can be viewed in Excel or any spreadsheet program.</p>\n")
 cata("<h4>Additional Information</h4>\n")
 cata("<ul>\n")
 if (cpmReq!=0 && sampleReq!=0) {
-  tempStr <- paste("Hairpins without more than", cpmReq,
+  tempStr <- paste("Genes without more than", cpmReq,
                    "CPM in at least", sampleReq, "samples are insignificant",
                    "and filtered out.")
   ListItem(tempStr)
